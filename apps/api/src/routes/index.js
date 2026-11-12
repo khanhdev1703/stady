@@ -6,6 +6,8 @@ import lessonRoutes from '../modules/lessons/lesson.routes.js';
 import enrollmentRoutes from '../modules/enrollments/enrollment.routes.js';
 import learningRoutes from '../modules/learning/learning.routes.js';
 import documentRoutes from '../modules/documents/document.routes.js';
+import quizRoutes from '../modules/quizzes/quiz.routes.js';
+import quizLearningRoutes from '../modules/quizzes/quizLearning.routes.js';
 
 const router = Router();
 
@@ -21,15 +23,8 @@ router.get('/', (req, res) => {
 });
 
 // ==========================================
-// Health check
+// Health check chung nằm ở app.js (/health)
 // ==========================================
-
-router.get('/health', (req, res) => {
-    res.json({
-        success: true,
-        message: 'API is healthy',
-    });
-});
 
 router.use('/users', userRoutes);
 router.use('/auth', authRoutes);
@@ -37,6 +32,8 @@ router.use('/courses', courseRoutes);
 router.use('/lessons', lessonRoutes);
 router.use('/enrollments', enrollmentRoutes);
 router.use("/learning", learningRoutes);
+router.use("/learning", quizLearningRoutes);
 router.use("/documents", documentRoutes);
+router.use("/quizzes", quizRoutes);
 
 export default router;

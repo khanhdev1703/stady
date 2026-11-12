@@ -29,6 +29,21 @@ const learningRepository = {
     });
   },
 
+  async countExpiredByStudentId(studentId) {
+    return prisma.enrollment.count({
+      where: {
+        studentId,
+        expiresAt: {
+          lte: new Date(),
+        },
+        course: {
+          isDelete: false,
+          status: true,
+        },
+      },
+    });
+  },
+
   async countLessonsByCourseId(courseId) {
     return prisma.lesson.count({
       where: {
@@ -102,11 +117,91 @@ const learningRepository = {
       },
       include: {
         documents: true,
+        quiz: {
+          select: {
+            id: true,
+            title: true,
+            passingScore: true,
+            isPublished: true,
+            requiresPassForCompletion: true,
+            _count: {
+              select: {
+                questions: true,
+              },
+            },
+          },
+        },
       },
       orderBy: {
         order: "asc",
       },
     });
+  },
+
+  async findQuizAttemptScores({
+    quizIds,
+    studentId,
+  }) {
+    if (quizIds.length === 0) return [];
+
+    return prisma.quizAttempt.findMany({
+      where: {
+        studentId,
+        quizId: {
+          in: quizIds,
+        },
+        submittedAt: {
+          not: null,
+        },
+      },
+      select: {
+        quizId: true,
+        score: true,
+      },
+    });
+  },
+
+  async findPublishedQuizByLesson(lessonId) {
+    return prisma.quiz.findFirst({
+      where: {
+        lessonId,
+        isPublished: true,
+      },
+      select: {
+        id: true,
+        passingScore: true,
+        requiresPassForCompletion: true,
+        _count: {
+          select: {
+            questions: true,
+          },
+        },
+      },
+    });
+  },
+
+  async hasPassedQuizAttempt({
+    quizId,
+    studentId,
+    passingScore,
+  }) {
+    const attempt = await prisma.quizAttempt.findFirst({
+      where: {
+        quizId,
+        studentId,
+        submittedAt: {
+          not: null,
+        },
+        score: {
+          gte: passingScore,
+        },
+      },
+      select: {
+        id: true,
+      },
+    });
+
+    return Boolean(attempt);
   },
 
   async findLessonById(lessonId) {

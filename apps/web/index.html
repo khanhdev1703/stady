@@ -1,16 +1,29 @@
 <!doctype html>
-<html lang="en">
+<html lang="vi">
 
 <head>
   <meta charset="UTF-8" />
-  <link rel="icon" type="image/png" href="/logo.png" />
+  <link rel="icon" type="image/png" href="/logo-amber.png" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#F5F5F5" />
   <title>Achan</title>
+  <script>
+    // Áp theme đã lưu trước khi vẽ để không bị nháy nền sáng khi người dùng chọn nền tối.
+    (function () {
+      try {
+        var saved = localStorage.getItem('achan-theme');
+        var allowed = ['dat', 'bien', 'dao', 'tim', 'rung', 'toi'];
+        var theme = allowed.indexOf(saved) >= 0 ? saved : 'dat';
+        document.documentElement.dataset.theme = theme;
+        document.documentElement.style.colorScheme = theme === 'toi' ? 'dark' : 'light';
+      } catch (e) { }
+    })();
+  </script>
 </head>
 
 <body>
   <div id="root"></div>
-  <script type="module" src="/src/main.jsx"></script>
+  <script type="module" src="/src/app/main.jsx"></script>
 </body>
 
 </html>

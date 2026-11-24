@@ -6,6 +6,7 @@ import {
 } from "react-router-dom";
 
 import appToast from "@/lib/toast.js";
+import resizeImageFile from "@/lib/image/resizeImageFile.js";
 import courseApi from "@/features/courses/api.js";
 
 import CourseBasicInfo from "@/features/courses/teacher/detail/overview/CourseBasicInfo.jsx";
@@ -84,7 +85,7 @@ const CourseOverviewPage = () => {
     // ==========================================
     // Select thumbnail
     // ==========================================
-    const handleSelectImage = (file) => {
+    const handleSelectImage = async (file) => {
         if (!file) {
             return;
         }
@@ -109,6 +110,8 @@ const CourseOverviewPage = () => {
             return;
         }
 
+        const uploadFile = await resizeImageFile(file);
+
         // Revoke old preview URL
         if (
             thumbnailPreview &&
@@ -117,11 +120,11 @@ const CourseOverviewPage = () => {
             URL.revokeObjectURL(thumbnailPreview);
         }
 
-        const previewUrl = URL.createObjectURL(file);
+        const previewUrl = URL.createObjectURL(uploadFile);
 
         setForm((prev) => ({
             ...prev,
-            thumbnailFile: file,
+            thumbnailFile: uploadFile,
         }));
 
         setThumbnailPreview(previewUrl);

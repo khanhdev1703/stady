@@ -4,6 +4,7 @@ import { LogOut, User } from "lucide-react";
 import SidebarBrand from "@/components/ui/SidebarBrand.jsx";
 import ThemeSwitcher from "@/components/ui/ThemeSwitcher.jsx";
 import useAuthStore from "@/stores/authStore";
+import useNotificationStore from "@/stores/notificationStore";
 import studentMenuItems from "@/components/layout/student/studentMenuItems.js";
 
 const StudentSidebar = () => {
@@ -11,6 +12,9 @@ const StudentSidebar = () => {
 
     const user = useAuthStore((state) => state.user);
     const logout = useAuthStore((state) => state.logout);
+    const unreadCount = useNotificationStore(
+        (state) => state.unreadCount
+    );
 
     const handleLogout = () => {
         logout();
@@ -86,6 +90,16 @@ const StudentSidebar = () => {
                                         <span>
                                             {item.label}
                                         </span>
+
+                                        {item.showBadge &&
+                                            unreadCount > 0 && (
+                                                <span className="ml-auto min-w-5 rounded-full bg-[var(--danger-solid)] px-1.5 py-0.5 text-center text-[12px] font-semibold leading-5 text-[var(--on-danger)]">
+                                                    {unreadCount >
+                                                    99
+                                                        ? "99+"
+                                                        : unreadCount}
+                                                </span>
+                                            )}
                                     </>
                                 )}
                             </NavLink>

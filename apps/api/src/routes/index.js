@@ -8,6 +8,7 @@ import learningRoutes from '../modules/learning/learning.routes.js';
 import documentRoutes from '../modules/documents/document.routes.js';
 import quizRoutes from '../modules/quizzes/quiz.routes.js';
 import quizLearningRoutes from '../modules/quizzes/quizLearning.routes.js';
+import notificationRoutes from '../modules/notifications/notification.routes.js';
 
 const router = Router();
 
@@ -35,5 +36,6 @@ router.use("/learning", learningRoutes);
 router.use("/learning", quizLearningRoutes);
 router.use("/documents", documentRoutes);
 router.use("/quizzes", quizRoutes);
+router.use("/notifications", notificationRoutes);
 
 export default router;

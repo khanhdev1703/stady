@@ -3,6 +3,7 @@
 import lessonRepository from "./lesson.repository.js";
 import courseRepository from "../courses/course.repository.js";
 import quizService from "../quizzes/quiz.service.js";
+import notificationService from "../notifications/notification.service.js";
 
 import storage from "../../utils/storage/index.js";
 import videoUtils from "../../utils/video.js";
@@ -174,6 +175,11 @@ const lessonService = {
 
                     isFree: parsedIsFree,
                 });
+
+            await notificationService.notifyLessonAdded({
+                course,
+                lesson,
+            });
 
             return lesson;
         } catch (error) {

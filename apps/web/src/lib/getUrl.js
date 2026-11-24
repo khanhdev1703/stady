@@ -20,7 +20,7 @@ const getUrl = (url) => {
     // Học liệu riêng tư (/uploads/lessons, /uploads/documents)
     // được tải kèm cookie phiên media ngắn hạn do trình duyệt
     // tự gửi, nên không đặt token vào URL.
-    return `${import.meta.env.VITE_API_URL}${url}`;
+    return `${import.meta.env.VITE_API_URL || ""}${url}`;
 };
 
 export default getUrl;

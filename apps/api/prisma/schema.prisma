@@ -13,6 +13,13 @@ enum Role {
   STUDENT
 }
 
+enum NotificationType {
+  COURSE_ENROLLED
+  ENROLLMENT_RENEWED
+  ENROLLMENT_REMOVED
+  LESSON_ADDED
+}
+
 model User {
   id String @id @default(auto()) @map("_id") @db.ObjectId
 
@@ -29,6 +36,8 @@ model User {
   enrollments      Enrollment[]
   lessonProgresses LessonProgress[]
   quizAttempts     QuizAttempt[]
+  certificates     Certificate[]
+  notifications    Notification[]
 
   // Soft delete
   isDelete Boolean @default(false)
@@ -68,6 +77,7 @@ model Course {
 
   lessons     Lesson[]
   enrollments Enrollment[]
+  certificates Certificate[]
 
   // Soft delete
   isDelete Boolean @default(false)
@@ -171,6 +181,10 @@ model LessonProgress {
   // và cho học sinh xem tiếp trên thiết bị khác.
   videoPositionSeconds Int @default(0)
   videoDurationSeconds Int @default(0)
+
+  // Tổng thời gian thực tế học sinh ở trong bài (giây),
+  // gồm xem video, đọc bài và làm quiz.
+  timeSpentSeconds Int @default(0)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -307,4 +321,61 @@ model QuizAnswer {
 
   @@unique([attemptId, questionId])
   @@index([attemptId])
+}
+
+model Certificate {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  studentId String @db.ObjectId
+  student   User   @relation(fields: [studentId], references: [id])
+
+  courseId String @db.ObjectId
+  course   Course @relation(fields: [courseId], references: [id])
+
+  // Ảnh chụp tại thời điểm cấp: đổi tên khóa/tài khoản
+  // sau này không làm thay đổi chứng nhận đã phát hành.
+  studentName String
+  courseTitle String
+  teacherName String?
+
+  completedAt DateTime
+  issuedAt    DateTime @default(now())
+
+  code String @unique
+
+  @@unique([studentId, courseId])
+  @@index([studentId])
+  @@index([courseId])
+}
+
+// ==========================================
+// Thông báo trong ứng dụng
+// ==========================================
+
+model Notification {
+  id String @id @default(auto()) @map("_id") @db.ObjectId
+
+  recipientId String @db.ObjectId
+  recipient   User   @relation(fields: [recipientId], references: [id])
+
+  type  NotificationType
+  title String
+  body  String
+
+  // Dữ liệu điều hướng: courseId, lessonId, enrollmentId...
+  data Json?
+
+  isRead Boolean   @default(false)
+  readAt DateTime?
+
+  // Khoá chống trùng, luôn có giá trị vì unique index của MongoDB
+  // coi nhiều document thiếu field là cùng một giá trị null.
+  dedupeKey String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([recipientId, dedupeKey])
+  @@index([recipientId, isRead, createdAt])
+  @@index([recipientId, createdAt])
 }

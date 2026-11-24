@@ -12,7 +12,7 @@ const learningController = {
     try {
       const studentId = req.user.id;
 
-      const { courses, expiredCount } =
+      const { courses, expiredCourses, expiredCount } =
         await learningService.getMyCourses({
           studentId,
         });
@@ -24,7 +24,82 @@ const learningController = {
         data: courses,
         meta: {
           expiredCount,
+          expiredCourses,
         },
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  // ==========================================
+  // Enroll in a free course
+  // POST /learning/courses/:courseId/enroll
+  // ==========================================
+
+  async enrollFreeCourse(req, res, next) {
+    try {
+      const { courseId } = req.params;
+      const studentId = req.user.id;
+
+      const enrollment =
+        await learningService.enrollFreeCourse({
+          courseId,
+          studentId,
+        });
+
+      return res.status(200).json({
+        success: true,
+        message: "Đã mở khóa học miễn phí.",
+        data: { enrollment },
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  // ==========================================
+  // Issue a course completion certificate
+  // POST /learning/courses/:courseId/certificate
+  // ==========================================
+
+  async issueCertificate(req, res, next) {
+    try {
+      const { courseId } = req.params;
+      const studentId = req.user.id;
+
+      const certificate =
+        await learningService.issueCertificate({
+          courseId,
+          studentId,
+        });
+
+      return res.status(200).json({
+        success: true,
+        message: "Cấp chứng nhận thành công.",
+        data: { certificate },
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  // ==========================================
+  // Get my learning progress
+  // GET /learning/my-progress
+  // ==========================================
+
+  async getMyProgress(req, res, next) {
+    try {
+      const progress =
+        await learningService.getMyProgress({
+          studentId: req.user.id,
+        });
+
+      return res.status(200).json({
+        success: true,
+        message: "Lấy tiến độ học tập thành công.",
+        data: progress,
       });
     } catch (error) {
       next(error);
@@ -78,6 +153,37 @@ const learningController = {
         message:
           "Truy cập bài học thành công.",
         data: progress,
+      });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  // ==========================================
+  // Accumulate study time for a lesson
+  // POST /learning/lessons/:lessonId/time
+  // ==========================================
+
+  async addLessonTime(req, res, next) {
+    try {
+      const { lessonId } = req.params;
+      const studentId = req.user.id;
+      const { seconds } = req.body;
+
+      const progress =
+        await learningService.addLessonTime({
+          lessonId,
+          studentId,
+          seconds,
+        });
+
+      return res.status(200).json({
+        success: true,
+        message: "Đã cập nhật thời gian học.",
+        data: {
+          timeSpentSeconds:
+            progress?.timeSpentSeconds ?? 0,
+        },
       });
     } catch (error) {
       next(error);

@@ -2,7 +2,9 @@
 
 import {
   ArrowRight,
+  Award,
   BookOpen,
+  CircleHelp,
   LockKeyhole,
   Play,
 } from "lucide-react";
@@ -55,175 +57,116 @@ const StudentCourseCard = ({ enrollment }) => {
 
   const remainingDays = getRemainingDays(enrollment?.expiresAt);
 
+  const isExpired =
+    remainingDays !== null && remainingDays <= 0;
+
+  const canOpen = !isLocked && !isExpired;
+
+  const hasCertificate = Boolean(enrollment?.hasCertificate);
+
+  // Khóa đã học xong thì luôn có đường vào chứng nhận:
+  // chứng nhận chỉ được tạo khi học sinh mở trang này.
+  const canViewCertificate = hasCertificate || isCompleted;
+
   const actionLabel = isCompleted
-    ? "Xem lại khóa học"
+    ? "Xem lại"
     : hasStarted
-      ? "Tiếp tục học"
-      : "Bắt đầu học";
+      ? "Tiếp tục"
+      : "Bắt đầu";
+
+  const statusLabel = isExpired
+    ? "Đã hết hạn"
+    : isCompleted
+      ? "Hoàn thành"
+      : hasStarted
+        ? "Đang học"
+        : "Chưa bắt đầu";
+
+  const statusTone = isExpired
+    ? "text-[var(--accent)]"
+    : isCompleted
+      ? "text-[var(--success)]"
+      : hasStarted
+        ? "text-[var(--brand-text)]"
+        : "text-[var(--muted)]";
+
+  const expiringSoon =
+    !isExpired &&
+    remainingDays !== null &&
+    remainingDays <= 7;
 
   const courseUrl = `/student/courses/${course.id}`;
 
   return (
-    <article
-      className={[
-        "group",
-        "relative",
-        "flex",
-        "w-full",
-        "flex-col",
-        "overflow-hidden",
-        "rounded-2xl",
-        "border",
-        "border-[var(--line)]",
-        "bg-[var(--surface)]",
-        "shadow-[0_2px_12px_rgba(15,23,42,0.04)]",
-        "transition-all",
-        "duration-200",
-        "hover:-translate-y-0.5",
-        "hover:border-[var(--brand)]",
-        "hover:shadow-[0_14px_32px_-12px_var(--ring)]",
-      ].join(" ")}
-    >
-      {/* ==========================================
-                Thumbnail
-            ========================================== */}
-
+    <article className="flex gap-3 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-3 shadow-sm transition-colors hover:border-[var(--brand)] sm:gap-4 sm:p-4">
       <Link
-        to={isLocked ? "#" : courseUrl}
+        to={canOpen ? courseUrl : "#"}
         onClick={(event) => {
-          if (isLocked) {
+          if (!canOpen) {
             event.preventDefault();
           }
         }}
-        className={[
-          "relative",
-          "block",
-          "aspect-[16/9]",
-          "w-full",
-          "overflow-hidden",
-          "bg-[var(--brand-soft)]",
-        ].join(" ")}
+        aria-hidden="true"
+        tabIndex={-1}
+        className="relative h-[88px] w-[108px] shrink-0 overflow-hidden rounded-xl bg-[var(--brand-soft)] sm:h-[104px] sm:w-[136px]"
       >
         {course.thumbnail ? (
           <>
             <img
               src={getUrl(course.thumbnail)}
-              alt={course.title}
-              className={[
-                "h-full",
-                "w-full",
-                "object-cover",
-                "transition-transform",
-                "duration-500",
-                !isLocked
-                  ? "group-hover:scale-105"
-                  : "",
-              ].join(" ")}
+              alt=""
+              loading="lazy"
+              className="h-full w-full object-cover"
             />
 
-            <div
-              className={[
-                "pointer-events-none",
-                "absolute",
-                "inset-0",
-                isLocked
-                  ? "bg-black/40"
-                  : "bg-gradient-to-t from-slate-950/25 via-transparent to-transparent",
-              ].join(" ")}
-            />
-
-            {/* Locked badge - chỉ hiển thị trên thumbnail */}
-            {isLocked && (
-              <div
-                className={[
-                  "absolute",
-                  "inset-0",
-                  "flex",
-                  "items-center",
-                  "justify-center",
-                ].join(" ")}
-              >
-                <div
-                  className={[
-                    "flex",
-                    "items-center",
-                    "gap-2",
-                    "rounded-full",
-                    "bg-[var(--surface)]/95",
-                    "px-3",
-                    "py-1.5",
-                    "text-xs",
-                    "font-semibold",
-                    "text-[var(--muted)]",
-                    "shadow-sm",
-                    "backdrop-blur-sm",
-                  ].join(" ")}
-                >
-                  <LockKeyhole
-                    size={14}
-                    strokeWidth={2}
-                  />
-
-                  <span>Tạm khoá</span>
-                </div>
-              </div>
+            {!canOpen && (
+              <span className="absolute inset-0 bg-black/40" />
             )}
           </>
         ) : (
-          <div
+          <span
             className={[
-              "flex",
-              "h-full",
-              "w-full",
-              "items-center",
-              "justify-center",
-              isLocked
-                ? "bg-[var(--line)] text-[var(--muted)]"
-                : "bg-gradient-to-br from-[var(--brand-soft)] to-[var(--surface-2)] text-[var(--brand-text)]",
+              "flex h-full w-full items-center justify-center",
+              canOpen
+                ? "text-[var(--brand-text)]"
+                : "text-[var(--muted)]",
             ].join(" ")}
           >
-            {isLocked ? (
-              <LockKeyhole
-                size={42}
-                strokeWidth={1.4}
-              />
+            {canOpen ? (
+              <BookOpen size={28} strokeWidth={1.4} />
             ) : (
-              <BookOpen
-                size={42}
-                strokeWidth={1.4}
-              />
+              <LockKeyhole size={28} strokeWidth={1.4} />
             )}
-          </div>
+          </span>
+        )}
+
+        {!canOpen && (
+          <span className="absolute inset-0 flex items-center justify-center">
+            <span className="flex items-center gap-1 rounded-full bg-[var(--surface)]/95 px-2 py-1 text-[12px] font-semibold text-[var(--muted)] shadow-sm">
+              <LockKeyhole size={11} strokeWidth={2} />
+
+              {isExpired ? "Hết hạn" : "Tạm khoá"}
+            </span>
+          </span>
         )}
       </Link>
 
-      {/* ==========================================
-                Content
-            ========================================== */}
-
-      <div className="flex flex-1 flex-col p-4 sm:p-5">
-        {/* Course title */}
+      <div className="flex min-w-0 flex-1 flex-col">
         <Link
-          to={isLocked ? "#" : courseUrl}
+          to={canOpen ? courseUrl : "#"}
           onClick={(event) => {
-            if (isLocked) {
+            if (!canOpen) {
               event.preventDefault();
             }
           }}
-          className="block"
+          className="min-w-0"
         >
           <h2
             className={[
-              "line-clamp-2",
-              "text-base",
-              "font-bold",
-              "leading-6",
-              "tracking-tight",
-              "text-[var(--ink)]",
-              !isLocked
-                ? "transition-colors duration-200 group-hover:text-[var(--brand-text)]"
+              "line-clamp-2 text-[14px] font-semibold leading-5 tracking-tight text-[var(--ink)] sm:text-[15px]",
+              canOpen
+                ? "transition-colors hover:text-[var(--brand-text)]"
                 : "",
-              "sm:text-[17px]",
             ].join(" ")}
             title={course.title}
           >
@@ -231,152 +174,110 @@ const StudentCourseCard = ({ enrollment }) => {
           </h2>
         </Link>
 
-        {/* ======================================
-                    Progress
-                ====================================== */}
+        <div className="mt-1.5 flex items-center justify-between gap-2 text-[12px] font-medium">
+          <span className="text-[var(--muted)]">
+            {completedLessons}/{totalLessons} bài
+          </span>
 
-        <div className="mt-5">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-[var(--muted)]">
-              Tiến độ học tập
-            </span>
-            <span
-              className={[
-                "text-xs",
-                "font-bold",
-                "tabular-nums",
-                isCompleted
-                  ? "text-[var(--success)]"
-                  : "text-[var(--brand-text)]",
-              ].join(" ")}
-            >
-              {progress}%
-            </span>
-          </div>
-
-          {/* Progress bar */}
-          <div
+          <span
             className={[
-              "mt-2",
-              "h-2",
-              "w-full",
-              "overflow-hidden",
-              "rounded-full",
-              "bg-[var(--brand-soft)]",
+              "tabular-nums",
+              isCompleted
+                ? "text-[var(--success)]"
+                : "text-[var(--brand-text)]",
             ].join(" ")}
           >
-            <div
-              className={[
-                "h-full",
-                "rounded-full",
-                "transition-all",
-                "duration-500",
-                isCompleted
-                  ? "bg-[var(--success)]"
-                  : "bg-[var(--brand-solid)]",
-              ].join(" ")}
-              style={{
-                width: `${progress}%`,
-              }}
-            />
-          </div>
-
-          {/* Progress detail */}
-          <div className="mt-2 flex items-center justify-between">
-            <span className="text-xs font-medium text-[var(--muted)]">
-              {completedLessons}/{totalLessons} bài học
-            </span>
-
-            {isCompleted ? (
-              <span className="text-[12px] font-semibold text-[var(--success)]">
-                Hoàn thành
-              </span>
-            ) : hasStarted ? (
-              <span className="text-[12px] font-semibold text-[var(--brand-text)]">
-                Đang học
-              </span>
-            ) : (
-              <span className="text-[12px] font-semibold text-[var(--muted)]">
-                Chưa bắt đầu
-              </span>
-            )}
-          </div>
-
-          {enrollment?.expiresAt && (
-            <p
-              className={[
-                "mt-2 text-[12px]",
-                remainingDays !== null && remainingDays <= 7
-                  ? "text-[var(--accent)]"
-                  : "text-[var(--muted)]",
-              ].join(" ")}
-            >
-              Hạn học: {formatDate(enrollment.expiresAt)}
-              {remainingDays !== null && remainingDays > 0 && remainingDays <= 7
-                ? ` (còn ${remainingDays} ngày)`
-                : ""}
-            </p>
-          )}
+            {progress}%
+          </span>
         </div>
 
-        {/* ======================================
-                    Action
-                ====================================== */}
-
-        {!isLocked && (
-          <Link
-            to={isLocked ? "#" : courseUrl}
-            onClick={(event) => {
-              if (isLocked) {
-                event.preventDefault();
-              }
-            }}
+        <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-[var(--brand-soft)]">
+          <div
             className={[
-              "mt-5",
-              "flex",
-              "h-10",
-              "w-full",
-              "items-center",
-              "justify-center",
-              "gap-2",
-              "rounded-full",
-              "text-xs",
-              "font-semibold",
-              "transition-all",
-              "duration-200",
-              "active:scale-[0.98]",
+              "h-full rounded-full transition-all duration-300",
               isCompleted
-                ? [
-                  "bg-[var(--success-soft)]",
-                  "text-[var(--success)]",
-                  "hover:bg-[var(--success-soft)]",
-                ].join(" ")
-                : [
-                  "bg-[var(--brand-solid)]",
-                  "text-white",
-                  "shadow-sm",
-                  "shadow-[var(--brand)]/20",
-                  "hover:bg-[var(--brand-solid-hover)]",
-                  "hover:shadow-md",
-                ].join(" "),
+                ? "bg-[var(--success)]"
+                : "bg-[var(--brand-solid)]",
             ].join(" ")}
-          >
-            {!isCompleted && (
-              <Play
-                size={15}
-                strokeWidth={2.2}
-                fill="currentColor"
-              />
-            )}
+            style={{ width: `${progress}%` }}
+          />
+        </div>
 
-            <span>{actionLabel}</span>
+        <p className="mt-1.5 flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[12px] leading-5">
+          <span className={["font-medium", statusTone].join(" ")}>
+            {statusLabel}
+          </span>
 
-            <ArrowRight
-              size={15}
-              strokeWidth={2.2}
-            />
-          </Link>
-        )}
+          {enrollment?.expiresAt && (
+            <span
+              className={
+                isExpired || expiringSoon
+                  ? "text-[var(--accent)]"
+                  : "text-[var(--muted)]"
+              }
+            >
+              ·{" "}
+              {isExpired
+                ? formatDate(enrollment.expiresAt)
+                : `Hạn ${formatDate(enrollment.expiresAt)}`}
+              {expiringSoon
+                ? ` (còn ${remainingDays} ngày)`
+                : ""}
+            </span>
+          )}
+        </p>
+
+        <div className="mt-auto flex items-center gap-2 pt-2">
+          {isExpired ? (
+            <Link
+              to="/student/profile/help"
+              className="inline-flex h-11 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-full border border-[var(--accent)]/30 bg-[var(--accent-soft)] px-3 text-[13px] font-semibold text-[var(--accent)]"
+            >
+              <CircleHelp size={14} />
+
+              <span className="truncate">
+                Liên hệ gia hạn
+              </span>
+            </Link>
+          ) : isLocked ? (
+            <span className="inline-flex h-11 min-w-0 flex-1 items-center justify-center rounded-full bg-[var(--surface-2)] px-3 text-[13px] font-semibold text-[var(--muted)]">
+              Tạm khoá
+            </span>
+          ) : (
+            <Link
+              to={courseUrl}
+              className={[
+                "inline-flex h-11 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-full px-3 text-[13px] font-semibold transition",
+                isCompleted
+                  ? "bg-[var(--success-soft)] text-[var(--success)] hover:bg-[var(--success-soft)]"
+                  : "bg-[var(--brand-solid)] text-white hover:bg-[var(--brand-solid-hover)]",
+              ].join(" ")}
+            >
+              {!isCompleted && (
+                <Play
+                  size={13}
+                  strokeWidth={2.2}
+                  fill="currentColor"
+                />
+              )}
+
+              <span className="truncate">{actionLabel}</span>
+
+              <ArrowRight size={14} strokeWidth={2.2} />
+            </Link>
+          )}
+
+          {canViewCertificate && (
+            <Link
+              to={`${courseUrl}/certificate`}
+              aria-label="Xem chứng nhận"
+              title="Xem chứng nhận"
+              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[var(--brand-soft)] bg-[var(--brand-tint)] text-[var(--brand-text)] transition hover:bg-[var(--brand-soft)]"
+            >
+              <Award size={17} strokeWidth={2} />
+            </Link>
+          )}
+        </div>
       </div>
     </article>
   );

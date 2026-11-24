@@ -146,7 +146,7 @@ const ProfilePage = () => {
                 Content
             ========================== */}
 
-            <div className="relative z-10 mx-auto w-full max-w-[375px] p-4">
+            <div className="relative z-10 mx-auto w-full max-w-[375px] p-4 sm:max-w-[560px] sm:p-6">
 
                 {/* Header */}
                 <header className="mb-5 flex items-center justify-center">

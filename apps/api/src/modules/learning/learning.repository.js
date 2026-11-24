@@ -29,8 +29,8 @@ const learningRepository = {
     });
   },
 
-  async countExpiredByStudentId(studentId) {
-    return prisma.enrollment.count({
+  async findExpiredByStudentId(studentId) {
+    return prisma.enrollment.findMany({
       where: {
         studentId,
         expiresAt: {
@@ -38,43 +38,59 @@ const learningRepository = {
         },
         course: {
           isDelete: false,
-          status: true,
         },
+      },
+      include: {
+        course: true,
+      },
+      orderBy: {
+        expiresAt: "desc",
       },
     });
   },
 
-  async countLessonsByCourseId(courseId) {
-    return prisma.lesson.count({
+  async findLessonsByCourseIds(courseIds) {
+    if (courseIds.length === 0) return [];
+
+    return prisma.lesson.findMany({
       where: {
-        courseId,
+        courseId: {
+          in: courseIds,
+        },
+      },
+      select: {
+        id: true,
+        courseId: true,
       },
     });
   },
 
-  async findCompletedLessonIdsByStudentAndCourse({
+  async findProgressByCourseIds({
     studentId,
-    courseId,
+    courseIds,
   }) {
-    const progressList =
-      await prisma.lessonProgress.findMany({
-        where: {
-          studentId,
-          lesson: {
-            courseId,
-          },
-          completedAt: {
-            not: null,
-          },
-        },
-        select: {
-          lessonId: true,
-        },
-      });
+    if (courseIds.length === 0) return [];
 
-    return progressList.map(
-      (progress) => progress.lessonId
-    );
+    return prisma.lessonProgress.findMany({
+      where: {
+        studentId,
+        lesson: {
+          courseId: {
+            in: courseIds,
+          },
+        },
+      },
+      select: {
+        lessonId: true,
+        completedAt: true,
+        lastAccessedAt: true,
+        lesson: {
+          select: {
+            courseId: true,
+          },
+        },
+      },
+    });
   },
   // ==========================================
   // Course
@@ -84,6 +100,21 @@ const learningRepository = {
     return prisma.course.findUnique({
       where: {
         id: courseId,
+      },
+    });
+  },
+
+  async findCourseWithTeacher(courseId) {
+    return prisma.course.findUnique({
+      where: {
+        id: courseId,
+      },
+      include: {
+        teacher: {
+          select: {
+            name: true,
+          },
+        },
       },
     });
   },
@@ -102,6 +133,80 @@ const learningRepository = {
           studentId,
           courseId,
         },
+      },
+    });
+  },
+
+  async createEnrollment(data) {
+    return prisma.enrollment.create({
+      data,
+    });
+  },
+
+  async updateEnrollment(id, data) {
+    return prisma.enrollment.update({
+      where: {
+        id,
+      },
+      data,
+    });
+  },
+
+  // ==========================================
+  // Certificate
+  // ==========================================
+
+  async findCertificate({
+    studentId,
+    courseId,
+  }) {
+    return prisma.certificate.findUnique({
+      where: {
+        studentId_courseId: {
+          studentId,
+          courseId,
+        },
+      },
+    });
+  },
+
+  async createCertificate(data) {
+    return prisma.certificate.create({
+      data,
+    });
+  },
+
+  async findCertificateCourseIds({
+    studentId,
+    courseIds,
+  }) {
+    if (courseIds.length === 0) return [];
+
+    const certificates = await prisma.certificate.findMany({
+      where: {
+        studentId,
+        courseId: {
+          in: courseIds,
+        },
+      },
+      select: {
+        courseId: true,
+      },
+    });
+
+    return certificates.map(
+      (certificate) => certificate.courseId
+    );
+  },
+
+  async findStudentById(studentId) {
+    return prisma.user.findUnique({
+      where: {
+        id: studentId,
+      },
+      select: {
+        id: true,
+        name: true,
       },
     });
   },
@@ -157,6 +262,18 @@ const learningRepository = {
       select: {
         quizId: true,
         score: true,
+      },
+    });
+  },
+
+  async findQuizAttemptsForStats(studentId) {
+    return prisma.quizAttempt.findMany({
+      where: {
+        studentId,
+      },
+      select: {
+        startedAt: true,
+        submittedAt: true,
       },
     });
   },
@@ -243,6 +360,21 @@ const learningRepository = {
         lesson: {
           courseId,
         },
+      },
+    });
+  },
+
+  async findProgressForStats(studentId) {
+    return prisma.lessonProgress.findMany({
+      where: {
+        studentId,
+      },
+      select: {
+        lastAccessedAt: true,
+        completedAt: true,
+        timeSpentSeconds: true,
+        videoPositionSeconds: true,
+        videoDurationSeconds: true,
       },
     });
   },

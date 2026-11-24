@@ -240,7 +240,7 @@ const LessonDetailPage = () => {
                                 className={[
                                     "inline-flex h-11 min-w-0 flex-1 items-center justify-center gap-1.5",
                                     "rounded-full px-2",
-                                    "text-[12px] font-medium sm:text-xs",
+                                    "text-[13px] font-medium",
                                     "transition-colors",
                                     isActive
                                         ? "bg-[var(--brand-soft)] font-semibold text-[var(--brand-text)]"

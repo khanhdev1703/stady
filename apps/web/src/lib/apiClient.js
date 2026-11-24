@@ -4,7 +4,7 @@ import axios from "axios";
 import useAuthStore from "@/stores/authStore";
 
 const apiClient = axios.create({
-    baseURL: `${import.meta.env.VITE_API_URL}/api`,
+    baseURL: `${import.meta.env.VITE_API_URL || ""}/api`,
     timeout: 10000,
     // Cần gửi kèm cookie để API đặt được cookie phiên media.
     withCredentials: true,

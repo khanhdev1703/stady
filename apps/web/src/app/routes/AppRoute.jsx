@@ -30,6 +30,9 @@ const StudentCoursesPage = lazy(
 const StudentCourseDetailPage = lazy(
     () => import("@/features/courses/student/StudentCourseDetailPage.jsx")
 );
+const CertificatePage = lazy(
+    () => import("@/features/certificates/pages/CertificatePage.jsx")
+);
 const ExplorePage = lazy(
     () => import("@/features/courses/explore/ExplorePage.jsx")
 );
@@ -68,6 +71,9 @@ const CourseEnrollmentsPage = lazy(
 
 const TeacherNotifications = lazy(
     () => import("@/features/notifications/pages/TeacherNotifications.jsx")
+);
+const StudentNotifications = lazy(
+    () => import("@/features/notifications/pages/StudentNotifications.jsx")
 );
 
 const StudentProfile = lazy(
@@ -142,6 +148,11 @@ const AppRoute = () => {
                             />
 
                             <Route
+                                path="courses/:courseId/certificate"
+                                element={<CertificatePage />}
+                            />
+
+                            <Route
                                 path="explore"
                                 element={<ExplorePage />}
                             />
@@ -149,6 +160,11 @@ const AppRoute = () => {
                             <Route
                                 path="explore/:courseId"
                                 element={<ExploreCourseDetailPage />}
+                            />
+
+                            <Route
+                                path="notifications"
+                                element={<StudentNotifications />}
                             />
 
                             <Route

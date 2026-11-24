@@ -274,7 +274,7 @@ const LessonInfoForm = ({ lesson, onLessonUpdated }) => {
                     </button>
                 </div>
 
-                <div className="flex flex-col-reverse gap-3 border-t border-[var(--surface-2)] pt-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-3 border-t border-[var(--surface-2)] pt-4 sm:flex-row sm:items-center sm:justify-between">
                     <p
                         aria-live="polite"
                         className={[

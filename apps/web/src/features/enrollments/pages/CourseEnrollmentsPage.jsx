@@ -4,6 +4,7 @@ import {
     ArrowRight,
     CalendarPlus,
     Plus,
+    Trash2,
     Users,
 } from "lucide-react";
 
@@ -15,6 +16,7 @@ import enrollmentApi from "@/features/enrollments/api.js";
 
 import AddStudentModal from "@/features/enrollments/components/AddStudentModal.jsx";
 import RenewEnrollmentModal from "@/features/enrollments/components/RenewEnrollmentModal.jsx";
+import RemoveStudentModal from "@/features/enrollments/components/RemoveStudentModal.jsx";
 
 
 // ==========================================
@@ -108,6 +110,7 @@ export default function CourseEnrollmentsPage() {
     const [loading, setLoading] = useState(true);
     const [showAddModal, setShowAddModal] = useState(false);
     const [renewTarget, setRenewTarget] = useState(null);
+    const [removeTarget, setRemoveTarget] = useState(null);
 
     const courseId = course?.id;
 
@@ -178,6 +181,16 @@ export default function CourseEnrollmentsPage() {
                     ? { ...item, ...updated }
                     : item
             )
+        );
+    }, []);
+
+    // ==========================================
+    // Remove student
+    // ==========================================
+
+    const handleRemoved = useCallback((enrollmentId) => {
+        setEnrollments((prev) =>
+            prev.filter((item) => item.id !== enrollmentId)
         );
     }, []);
 
@@ -451,6 +464,28 @@ export default function CourseEnrollmentsPage() {
 
 
                                         {/* ==================================
+                                            Remove
+                                        =================================== */}
+
+                                        <button
+                                            type="button"
+                                            aria-label={`Xóa ${studentName} khỏi khóa học`}
+                                            title="Xóa khỏi khóa học"
+                                            onClick={() =>
+                                                setRemoveTarget(
+                                                    enrollment
+                                                )
+                                            }
+                                            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-[var(--line)] text-[var(--muted)] transition hover:border-[var(--danger)]/30 hover:bg-[var(--danger-soft)] hover:text-[var(--danger)]"
+                                        >
+                                            <Trash2
+                                                size={16}
+                                                strokeWidth={1.8}
+                                            />
+                                        </button>
+
+
+                                        {/* ==================================
                                             View detail
                                         =================================== */}
 
@@ -500,6 +535,13 @@ export default function CourseEnrollmentsPage() {
                 courseDurationMonths={course?.durationMonths}
                 onClose={() => setRenewTarget(null)}
                 onRenewed={handleRenewed}
+            />
+
+            <RemoveStudentModal
+                open={Boolean(removeTarget)}
+                enrollment={removeTarget}
+                onClose={() => setRemoveTarget(null)}
+                onRemoved={handleRemoved}
             />
         </>
     );

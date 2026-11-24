@@ -35,6 +35,7 @@ const ExploreCourseDetailPage = () => {
     const [hasFullAccess, setHasFullAccess] = useState(false);
     const [previewLesson, setPreviewLesson] = useState(null);
     const [enrollInfoOpen, setEnrollInfoOpen] = useState(false);
+    const [enrolling, setEnrolling] = useState(false);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(false);
     const [reloadKey, setReloadKey] = useState(0);
@@ -66,6 +67,25 @@ const ExploreCourseDetailPage = () => {
         } catch (copyError) {
             console.error("Copy student code error:", copyError);
             appToast.error("Không sao chép được, vui lòng thử lại.");
+        }
+    };
+
+    const handleFreeEnroll = async () => {
+        if (enrolling) return;
+
+        setEnrolling(true);
+
+        try {
+            await learningApi.enrollFreeCourse(courseId);
+            navigate(`/student/courses/${courseId}`);
+        } catch (enrollError) {
+            console.error("Enroll free course error:", enrollError);
+            appToast.error(
+                enrollError?.response?.data?.message ||
+                    "Không thể mở khóa học. Vui lòng thử lại."
+            );
+        } finally {
+            setEnrolling(false);
         }
     };
 
@@ -377,6 +397,20 @@ const ExploreCourseDetailPage = () => {
                                 Vào học
                             </button>
                         )}
+
+                        {!hasFullAccess && isFree && !isLocked && (
+                            <button
+                                type="button"
+                                onClick={handleFreeEnroll}
+                                disabled={enrolling}
+                                className="mt-5 hidden h-11 items-center gap-2 rounded-full bg-[var(--brand-solid)] px-5 text-[13px] font-semibold text-white transition hover:bg-[var(--brand-solid-hover)] disabled:cursor-not-allowed disabled:opacity-60 lg:inline-flex"
+                            >
+                                <PlayCircle size={16} />
+                                {enrolling
+                                    ? "Đang mở khóa học..."
+                                    : "Học miễn phí"}
+                            </button>
+                        )}
                     </div>
                 </section>
 
@@ -545,14 +579,13 @@ const ExploreCourseDetailPage = () => {
                     ) : isFree ? (
                         <button
                             type="button"
-                            onClick={() =>
-                                navigate(
-                                    `/student/courses/${courseId}`
-                                )
-                            }
-                            className="inline-flex h-11 shrink-0 items-center justify-center rounded-full bg-[var(--brand-solid)] px-5 text-[13px] font-semibold text-white transition active:bg-[var(--brand-solid-hover)]"
+                            onClick={handleFreeEnroll}
+                            disabled={enrolling}
+                            className="inline-flex h-11 shrink-0 items-center justify-center rounded-full bg-[var(--brand-solid)] px-5 text-[13px] font-semibold text-white transition active:bg-[var(--brand-solid-hover)] disabled:cursor-not-allowed disabled:opacity-60"
                         >
-                            Học miễn phí
+                            {enrolling
+                                ? "Đang mở khóa học..."
+                                : "Học miễn phí"}
                         </button>
                     ) : (
                         <button

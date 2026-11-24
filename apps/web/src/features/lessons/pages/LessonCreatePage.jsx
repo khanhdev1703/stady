@@ -39,6 +39,7 @@ const LessonCreatePage = () => {
     const [videoPreview, setVideoPreview] = useState("");
     const [saving, setSaving] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
+    const [errors, setErrors] = useState({});
 
     // ==========================================
     // Cleanup preview
@@ -193,25 +194,34 @@ const LessonCreatePage = () => {
         }
 
         // ======================================
-        // Validate title
+        // Validate
         // ======================================
+
+        const nextErrors = {};
 
         if (!form.title.trim()) {
-            appToast.error(
-                "Vui lòng nhập tên bài học."
-            );
-
-            return;
+            nextErrors.title = "Vui lòng nhập tên bài học.";
         }
 
-        // ======================================
-        // Validate video
-        // ======================================
-
         if (!form.videoFile) {
-            appToast.error(
-                "Vui lòng chọn video cho bài học."
+            nextErrors.video = "Vui lòng chọn video cho bài học.";
+        }
+
+        setErrors(nextErrors);
+
+        if (Object.keys(nextErrors).length > 0) {
+            const firstInvalid = document.getElementById(
+                nextErrors.title
+                    ? "lesson-title"
+                    : "lesson-video"
             );
+
+            firstInvalid?.scrollIntoView({
+                block: "center",
+                behavior: "smooth",
+            });
+
+            firstInvalid?.focus({ preventScroll: true });
 
             return;
         }
@@ -331,6 +341,8 @@ const LessonCreatePage = () => {
                         inline-flex
                         items-center
                         gap-1.5
+                        min-h-11
+                        px-1
                         text-xs
                         font-medium
                         text-[var(--muted)]
@@ -367,6 +379,7 @@ const LessonCreatePage = () => {
 
                     <div>
                         <label
+                            htmlFor="lesson-title"
                             className="
                                 mb-1.5
                                 block
@@ -382,6 +395,13 @@ const LessonCreatePage = () => {
                         </label>
 
                         <input
+                            id="lesson-title"
+                            aria-invalid={Boolean(errors.title)}
+                            aria-describedby={
+                                errors.title
+                                    ? "lesson-title-error"
+                                    : undefined
+                            }
                             type="text"
                             value={form.title}
                             onChange={(event) =>
@@ -391,7 +411,7 @@ const LessonCreatePage = () => {
                                 )
                             }
                             disabled={saving}
-                            placeholder="Ví dụ: Giới thiệu React"
+                            placeholder="Ví dụ: Chào hỏi và giới thiệu bản thân"
                             className="
                                 w-full
                                 rounded-full
@@ -409,12 +429,22 @@ const LessonCreatePage = () => {
                                 disabled:bg-[var(--surface-3)]
                             "
                         />
+
+                        {errors.title && (
+                            <p
+                                id="lesson-title-error"
+                                className="mt-1.5 text-xs text-[var(--danger)]"
+                            >
+                                {errors.title}
+                            </p>
+                        )}
                     </div>
 
                     {/* Description */}
 
                     <div className="mt-4">
                         <label
+                            htmlFor="lesson-description"
                             className="
                                 mb-1.5
                                 block
@@ -427,6 +457,7 @@ const LessonCreatePage = () => {
                         </label>
 
                         <textarea
+                            id="lesson-description"
                             value={form.description}
                             onChange={(event) =>
                                 updateForm(
@@ -635,6 +666,7 @@ const LessonCreatePage = () => {
                             </span>
 
                             <input
+                                id="lesson-video"
                                 type="file"
                                 accept="video/mp4,video/webm,video/quicktime"
                                 onChange={handleSelectVideo}
@@ -788,6 +820,15 @@ const LessonCreatePage = () => {
                                 )}
                             </div>
                         </div>
+                    )}
+
+                    {errors.video && (
+                        <p
+                            id="lesson-video-error"
+                            className="mt-2 text-xs text-[var(--danger)]"
+                        >
+                            {errors.video}
+                        </p>
                     )}
                 </section>
 

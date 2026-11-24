@@ -5,6 +5,7 @@ import { toast } from "react-hot-toast";
 
 import Breadcrumb from "@/components/ui/Breadcrumb.jsx";
 import courseApi from "@/features/courses/api.js";
+import resizeImageFile from "@/lib/image/resizeImageFile.js";
 
 const CourseCreatePage = () => {
     const navigate = useNavigate();
@@ -18,6 +19,7 @@ const CourseCreatePage = () => {
     const [thumbnailPreview, setThumbnailPreview] = useState("");
 
     const [loading, setLoading] = useState(false);
+    const [errors, setErrors] = useState({});
 
     /*
      * ==========================================
@@ -39,7 +41,7 @@ const CourseCreatePage = () => {
      * ==========================================
      */
 
-    const handleThumbnailChange = (e) => {
+    const handleThumbnailChange = async (e) => {
         const file = e.target.files?.[0];
 
         if (!file) return;
@@ -56,13 +58,15 @@ const CourseCreatePage = () => {
             return;
         }
 
+        const uploadFile = await resizeImageFile(file);
+
         if (thumbnailPreview) {
             URL.revokeObjectURL(thumbnailPreview);
         }
 
-        const previewUrl = URL.createObjectURL(file);
+        const previewUrl = URL.createObjectURL(uploadFile);
 
-        setThumbnail(file);
+        setThumbnail(uploadFile);
         setThumbnailPreview(previewUrl);
     };
 
@@ -90,9 +94,10 @@ const CourseCreatePage = () => {
 
         if (loading) return;
 
+        const nextErrors = {};
+
         if (!title.trim()) {
-            toast.error("Vui lòng nhập tên khóa học.");
-            return;
+            nextErrors.title = "Vui lòng nhập tên khóa học.";
         }
 
         if (price !== "") {
@@ -102,8 +107,7 @@ const CourseCreatePage = () => {
                 !Number.isInteger(parsedPrice) ||
                 parsedPrice < 0
             ) {
-                toast.error("Giá khóa học không hợp lệ.");
-                return;
+                nextErrors.price = "Giá khóa học không hợp lệ.";
             }
         }
 
@@ -114,9 +118,30 @@ const CourseCreatePage = () => {
                 !Number.isInteger(parsedDuration) ||
                 parsedDuration <= 0
             ) {
-                toast.error("Thời hạn khóa học không hợp lệ.");
-                return;
+                nextErrors.duration =
+                    "Thời hạn khóa học không hợp lệ.";
             }
+        }
+
+        setErrors(nextErrors);
+
+        if (Object.keys(nextErrors).length > 0) {
+            const fieldId = nextErrors.title
+                ? "course-title"
+                : nextErrors.price
+                    ? "course-price"
+                    : "course-duration";
+
+            const field = document.getElementById(fieldId);
+
+            field?.scrollIntoView({
+                block: "center",
+                behavior: "smooth",
+            });
+
+            field?.focus({ preventScroll: true });
+
+            return;
         }
 
         try {
@@ -235,16 +260,31 @@ const CourseCreatePage = () => {
 
                             <input
                                 id="course-title"
+                                aria-invalid={Boolean(errors.title)}
+                                aria-describedby={
+                                    errors.title
+                                        ? "course-title-error"
+                                        : undefined
+                                }
                                 type="text"
                                 value={title}
                                 onChange={(e) =>
                                     setTitle(e.target.value)
                                 }
-                                placeholder="Ví dụ: React cơ bản"
+                                placeholder="Ví dụ: Tiếng Lào giao tiếp cơ bản"
                                 disabled={loading}
                                 maxLength={150}
                                 className="w-full rounded-full border border-[var(--line)] bg-[var(--surface)] px-4 py-3 text-sm text-[var(--ink)] outline-none transition placeholder:text-[var(--faint)] focus:border-[var(--brand)] focus:ring-2 focus:ring-[var(--brand)]/20 disabled:bg-[var(--surface-2)]"
                             />
+
+                            {errors.title && (
+                                <p
+                                    id="course-title-error"
+                                    className="mt-1.5 text-xs text-[var(--danger)]"
+                                >
+                                    {errors.title}
+                                </p>
+                            )}
                         </div>
 
                         {/* Description */}
@@ -291,6 +331,12 @@ const CourseCreatePage = () => {
                                 <div className="relative">
                                     <input
                                         id="course-price"
+                                        aria-invalid={Boolean(errors.price)}
+                                        aria-describedby={
+                                            errors.price
+                                                ? "course-price-error"
+                                                : undefined
+                                        }
                                         type="number"
                                         min="0"
                                         step="1"
@@ -313,6 +359,15 @@ const CourseCreatePage = () => {
                                 <p className="mt-1.5 text-xs text-[var(--faint)]">
                                     Nhập 0 nếu khóa học miễn phí.
                                 </p>
+
+                                {errors.price && (
+                                    <p
+                                        id="course-price-error"
+                                        className="mt-1 text-xs text-[var(--danger)]"
+                                    >
+                                        {errors.price}
+                                    </p>
+                                )}
                             </div>
 
                             {/* Duration */}
@@ -328,6 +383,14 @@ const CourseCreatePage = () => {
                                 <div className="relative">
                                     <input
                                         id="course-duration"
+                                        aria-invalid={Boolean(
+                                            errors.duration
+                                        )}
+                                        aria-describedby={
+                                            errors.duration
+                                                ? "course-duration-error"
+                                                : undefined
+                                        }
                                         type="number"
                                         min="1"
                                         step="1"
@@ -351,6 +414,15 @@ const CourseCreatePage = () => {
                                     Có thể để trống nếu không
                                     giới hạn thời hạn.
                                 </p>
+
+                                {errors.duration && (
+                                    <p
+                                        id="course-duration-error"
+                                        className="mt-1 text-xs text-[var(--danger)]"
+                                    >
+                                        {errors.duration}
+                                    </p>
+                                )}
                             </div>
                         </div>
 
@@ -359,11 +431,15 @@ const CourseCreatePage = () => {
                         ========================================== */}
 
                         <div>
-                            <label className="mb-2 block text-sm font-semibold text-[var(--ink-2)]">
+                            <label
+                                htmlFor="course-thumbnail"
+                                className="mb-2 block text-sm font-semibold text-[var(--ink-2)]"
+                            >
                                 Ảnh khóa học
                             </label>
 
                             <input
+                                id="course-thumbnail"
                                 ref={fileInputRef}
                                 type="file"
                                 accept="image/*"

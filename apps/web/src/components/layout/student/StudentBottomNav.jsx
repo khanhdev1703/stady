@@ -1,8 +1,13 @@
 import { NavLink } from "react-router-dom";
 
 import studentMenuItems from "@/components/layout/student/studentMenuItems.js";
+import useNotificationStore from "@/stores/notificationStore";
 
 const StudentBottomNav = () => {
+    const unreadCount = useNotificationStore(
+        (state) => state.unreadCount
+    );
+
     return (
         <nav
             aria-label="Điều hướng chính"
@@ -46,10 +51,26 @@ const StudentBottomNav = () => {
                                     ].join(" ")}
                                 />
 
-                                <Icon
-                                    size={20}
-                                    strokeWidth={isActive ? 2.2 : 1.8}
-                                />
+                                <span className="relative">
+                                    <Icon
+                                        size={20}
+                                        strokeWidth={
+                                            isActive
+                                                ? 2.2
+                                                : 1.8
+                                        }
+                                    />
+
+                                    {item.showBadge &&
+                                        unreadCount > 0 && (
+                                            <span className="absolute -right-2.5 -top-1.5 min-w-5 rounded-full bg-[var(--danger-solid)] px-1 text-center text-[12px] font-semibold leading-5 text-[var(--on-danger)]">
+                                                {unreadCount >
+                                                99
+                                                    ? "99+"
+                                                    : unreadCount}
+                                            </span>
+                                        )}
+                                </span>
 
                                 <span>{item.label}</span>
                             </>

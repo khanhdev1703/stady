@@ -50,7 +50,7 @@ const DocumentCard = ({
       {/* File information */}
       <div className="min-w-0 flex-1">
         <p
-          className="truncate text-xs font-medium text-[var(--ink-2)]"
+          className="truncate text-[13px] font-medium text-[var(--ink-2)]"
           title={fileName}
         >
           {fileName}
@@ -59,7 +59,7 @@ const DocumentCard = ({
         <div className="mt-0.5 flex items-center gap-1.5">
           <span
             className={[
-              "text-[12px] font-medium",
+              "text-[13px] font-medium",
               iconClass.split(" ").find((className) =>
                 className.startsWith("text-")
               ),
@@ -70,11 +70,11 @@ const DocumentCard = ({
 
           {document.size > 0 && (
             <>
-              <span className="text-[12px] text-[var(--line-strong)]">
+              <span className="text-[13px] text-[var(--line-strong)]">
                 ·
               </span>
 
-              <span className="text-[12px] text-[var(--faint)]">
+              <span className="text-[13px] text-[var(--faint)]">
                 {formatFileSize(document.size)}
               </span>
             </>

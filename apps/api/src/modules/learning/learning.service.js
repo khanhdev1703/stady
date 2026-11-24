@@ -1,6 +1,16 @@
 // src/modules/learning/learning.service.js
 
 import learningRepository from "./learning.repository.js";
+import {
+  buildCertificateCode,
+  buildFreeEnrollmentWindow,
+  getCourseCompletionDate,
+  getLessonStudySeconds,
+  getStudyDateKey,
+  getWeekDateKeys,
+  isSelfEnrollableCourse,
+  sortByRecentStudy,
+} from "./learning.helpers.js";
 
 // ==========================================
 // Kiểm tra học sinh được phép học bài này
@@ -204,60 +214,371 @@ const evaluateLessonCompletion = async ({
   };
 };
 
+// ==========================================
+// Gắn tiến độ và lần học gần nhất vào từng
+// ghi danh, dùng chung cho khóa còn hạn và
+// khóa đã hết hạn.
+// ==========================================
+
+const buildCourseSummaries = async ({
+  enrollments,
+  studentId,
+}) => {
+  if (enrollments.length === 0) return [];
+
+  const courseIds = [
+    ...new Set(enrollments.map((enrollment) => enrollment.courseId)),
+  ];
+
+  const [lessons, progressList] = await Promise.all([
+    learningRepository.findLessonsByCourseIds(courseIds),
+    learningRepository.findProgressByCourseIds({
+      studentId,
+      courseIds,
+    }),
+  ]);
+
+  const totalByCourse = new Map();
+  const completedByCourse = new Map();
+  const lastStudiedByCourse = new Map();
+
+  const increment = (map, courseId) => {
+    map.set(courseId, (map.get(courseId) ?? 0) + 1);
+  };
+
+  lessons.forEach((lesson) => {
+    increment(totalByCourse, lesson.courseId);
+  });
+
+  progressList.forEach((progress) => {
+    const courseId = progress.lesson.courseId;
+    const previous = lastStudiedByCourse.get(courseId);
+
+    if (progress.completedAt) {
+      increment(completedByCourse, courseId);
+    }
+
+    if (!previous || progress.lastAccessedAt > previous) {
+      lastStudiedByCourse.set(
+        courseId,
+        progress.lastAccessedAt
+      );
+    }
+  });
+
+  return enrollments.map((enrollment) => {
+    const totalLessons =
+      totalByCourse.get(enrollment.courseId) ?? 0;
+
+    const completedLessons =
+      completedByCourse.get(enrollment.courseId) ?? 0;
+
+    const progress =
+      totalLessons > 0
+        ? Math.round(
+            (completedLessons / totalLessons) * 100
+          )
+        : 0;
+
+    return {
+      ...enrollment,
+      lastStudiedAt:
+        lastStudiedByCourse.get(enrollment.courseId) ??
+        null,
+      course: {
+        ...enrollment.course,
+        totalLessons,
+        completedLessons,
+        progress,
+      },
+    };
+  });
+};
+
 const learningService = {
   assertLessonAccess,
 
   async getMyCourses({ studentId }) {
-    const [enrollments, expiredCount] =
+    const [enrollments, expiredEnrollments] =
       await Promise.all([
         learningRepository.findByStudentId(studentId),
-        learningRepository.countExpiredByStudentId(studentId),
+        learningRepository.findExpiredByStudentId(studentId),
       ]);
 
-    const courses = await Promise.all(
-      enrollments.map(async (enrollment) => {
-        const totalLessons =
-          await learningRepository.countLessonsByCourseId(
-            enrollment.courseId
-          );
+    const activeIds = new Set(
+      enrollments.map((enrollment) => enrollment.id)
+    );
 
-        const completedLessonIds =
-          await learningRepository.findCompletedLessonIdsByStudentAndCourse(
-            {
-              studentId,
-              courseId: enrollment.courseId,
-            }
-          );
+    const expiredIds = new Set(
+      expiredEnrollments.map((enrollment) => enrollment.id)
+    );
 
-        const completedLessons =
-          completedLessonIds.length;
+    const summaries = await buildCourseSummaries({
+      enrollments: [...enrollments, ...expiredEnrollments],
+      studentId,
+    });
 
-        const progress =
-          totalLessons > 0
-            ? Math.round(
-              (completedLessons /
-                totalLessons) *
-              100
-            )
-            : 0;
+    const certificateCourseIds =
+      await learningRepository.findCertificateCourseIds({
+        studentId,
+        courseIds: summaries.map(
+          (summary) => summary.courseId
+        ),
+      });
 
-        return {
-          ...enrollment,
-          course: {
-            ...enrollment.course,
-            totalLessons,
-            completedLessons,
-            progress,
-          },
-        };
+    const certificateIdSet = new Set(
+      certificateCourseIds
+    );
+
+    const summariesWithCertificate = summaries.map(
+      (summary) => ({
+        ...summary,
+        hasCertificate: certificateIdSet.has(
+          summary.courseId
+        ),
       })
     );
 
+    const expiredCourses = summariesWithCertificate.filter(
+      (summary) => expiredIds.has(summary.id)
+    );
+
     return {
-      courses,
-      expiredCount,
+      courses: sortByRecentStudy(
+        summariesWithCertificate.filter((summary) =>
+          activeIds.has(summary.id)
+        )
+      ),
+      expiredCourses,
+      expiredCount: expiredCourses.length,
     };
   },
+
+  // ==========================================
+  // Get my learning progress
+  // ==========================================
+
+  async getMyProgress({ studentId }) {
+    const now = new Date();
+    const todayKey = getStudyDateKey(now);
+    const weekKeys = getWeekDateKeys(todayKey);
+
+    const [progressRows, attemptRows] = await Promise.all([
+      learningRepository.findProgressForStats(studentId),
+      learningRepository.findQuizAttemptsForStats(studentId),
+    ]);
+
+    const activityKeys = new Set();
+
+    const addActivity = (value) => {
+      const key = getStudyDateKey(value);
+
+      if (key) {
+        activityKeys.add(key);
+      }
+
+      return key;
+    };
+
+    let studySeconds = 0;
+    let completedLessons = 0;
+
+    progressRows.forEach((progress) => {
+      addActivity(progress.lastAccessedAt);
+      addActivity(progress.completedAt);
+
+      if (progress.completedAt) {
+        completedLessons += 1;
+      }
+
+      studySeconds += getLessonStudySeconds(progress);
+    });
+
+    attemptRows.forEach((attempt) => {
+      addActivity(attempt.startedAt);
+      addActivity(attempt.submittedAt);
+    });
+
+    return {
+      studySeconds,
+      completedLessons,
+      today: todayKey,
+      weekActivity: weekKeys.map((date) => ({
+        date,
+        studied: activityKeys.has(date),
+      })),
+    };
+  },
+
+  // ==========================================
+  // Student self-enrollment for free courses
+  // ==========================================
+
+  async enrollFreeCourse({ courseId, studentId }) {
+    const course =
+      await learningRepository.findCourseById(courseId);
+
+    if (!course || course.isDelete) {
+      const error = new Error(
+        "Không tìm thấy khóa học."
+      );
+      error.statusCode = 404;
+      throw error;
+    }
+
+    if (!course.status) {
+      const error = new Error(
+        "Khóa học hiện đang tạm khóa."
+      );
+      error.statusCode = 403;
+      throw error;
+    }
+
+    if (!isSelfEnrollableCourse(course)) {
+      const error = new Error(
+        "Khóa học trả phí cần giáo viên ghi danh. Hãy gửi mã học sinh của bạn cho giáo viên."
+      );
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const now = new Date();
+
+    const existing =
+      await learningRepository.findEnrollment({
+        studentId,
+        courseId,
+      });
+
+    if (existing && existing.expiresAt > now) {
+      return existing;
+    }
+
+    const window = buildFreeEnrollmentWindow({
+      now,
+      durationMonths: course.durationMonths,
+    });
+
+    if (existing) {
+      return learningRepository.updateEnrollment(
+        existing.id,
+        window
+      );
+    }
+
+    return learningRepository.createEnrollment({
+      studentId,
+      courseId,
+      ...window,
+    });
+  },
+
+  // ==========================================
+  // Issue a course completion certificate
+  // ==========================================
+
+  async issueCertificate({ courseId, studentId }) {
+    const course =
+      await learningRepository.findCourseWithTeacher(
+        courseId
+      );
+
+    if (!course || course.isDelete) {
+      const error = new Error(
+        "Không tìm thấy khóa học."
+      );
+      error.statusCode = 404;
+      throw error;
+    }
+
+    const existing =
+      await learningRepository.findCertificate({
+        studentId,
+        courseId,
+      });
+
+    if (existing) return existing;
+
+    const lessons =
+      await learningRepository.findLessonsByCourseIds([
+        courseId,
+      ]);
+
+    if (lessons.length === 0) {
+      const error = new Error(
+        "Khóa học chưa có bài học."
+      );
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const progresses =
+      await learningRepository.findProgressByCourseIds({
+        studentId,
+        courseIds: [courseId],
+      });
+
+    const completedLessons = progresses.filter(
+      (progress) => progress.completedAt
+    ).length;
+
+    if (completedLessons < lessons.length) {
+      const error = new Error(
+        "Bạn cần hoàn thành 100% khóa học để nhận chứng nhận."
+      );
+      error.statusCode = 403;
+      throw error;
+    }
+
+    const student =
+      await learningRepository.findStudentById(
+        studentId
+      );
+
+    if (!student) {
+      const error = new Error(
+        "Không tìm thấy học sinh."
+      );
+      error.statusCode = 404;
+      throw error;
+    }
+
+    const completedAt =
+      getCourseCompletionDate(progresses);
+
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        return await learningRepository.createCertificate({
+          studentId,
+          courseId,
+          studentName: student.name,
+          courseTitle: course.title,
+          teacherName: course.teacher?.name ?? null,
+          completedAt: completedAt ?? new Date(),
+          code: buildCertificateCode(),
+        });
+      } catch (error) {
+        // Mã chứng nhận trùng hoặc hai tab cùng cấp một lúc:
+        // dùng bản đã có, nếu chưa có thì thử mã khác.
+        if (error?.code !== "P2002") throw error;
+
+        const raced =
+          await learningRepository.findCertificate({
+            studentId,
+            courseId,
+          });
+
+        if (raced) return raced;
+      }
+    }
+
+    const error = new Error(
+      "Không thể cấp chứng nhận. Vui lòng thử lại."
+    );
+    error.statusCode = 500;
+    throw error;
+  },
+
   // ==========================================
   // Get course for learning
   // ==========================================
@@ -507,6 +828,62 @@ const learningService = {
   // ==========================================
   // Access lesson
   // ==========================================
+
+  // ==========================================
+  // Accumulate active study time for a lesson
+  // (video, reading and quiz while the page is open)
+  // ==========================================
+
+  async addLessonTime({
+    lessonId,
+    studentId,
+    seconds,
+  }) {
+    const numericSeconds = Math.floor(Number(seconds));
+
+    if (
+      !Number.isFinite(numericSeconds) ||
+      numericSeconds < 1
+    ) {
+      const error = new Error(
+        "Thời gian học không hợp lệ."
+      );
+      error.statusCode = 400;
+      throw error;
+    }
+
+    const cappedSeconds = Math.min(numericSeconds, 120);
+
+    await learningService.assertLessonAccess({
+      lessonId,
+      studentId,
+    });
+
+    const progress =
+      await learningRepository.findLessonProgress({
+        studentId,
+        lessonId,
+      });
+
+    const nextSeconds =
+      getLessonStudySeconds(progress) + cappedSeconds;
+
+    if (progress) {
+      return learningRepository.updateLessonProgress({
+        studentId,
+        lessonId,
+        data: {
+          timeSpentSeconds: nextSeconds,
+        },
+      });
+    }
+
+    return learningRepository.createLessonProgress({
+      studentId,
+      lessonId,
+      timeSpentSeconds: cappedSeconds,
+    });
+  },
 
   async accessLesson({
     lessonId,

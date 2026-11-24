@@ -7,6 +7,7 @@ import {
 
 import {
   AlertCircle,
+  Award,
   BookOpen,
   CheckCircle2,
   ChevronRight,
@@ -27,9 +28,11 @@ import LearningVideo from "@/features/learning/components/LearningVideo.jsx";
 import LearningSidebar from "@/features/learning/components/LearningSidebar.jsx";
 import LessonDrawer from "@/features/learning/components/LessonDrawer.jsx";
 import LessonNavigation from "@/features/learning/components/LessonNavigation.jsx";
+import useLessonStudyTimer from "@/features/learning/hooks/useLessonStudyTimer.js";
 import DocumentCard from "@/features/documents/components/DocumentCard.jsx";
 import QuizCard from "@/features/quizzes/components/QuizCard.jsx";
 import QuizRunner from "@/features/quizzes/components/QuizRunner.jsx";
+import CourseCompletionCelebration from "@/features/learning/components/CourseCompletionCelebration.jsx";
 
 const getErrorMessage = (error, fallback) => {
   const status = error?.response?.status;
@@ -43,6 +46,7 @@ const getErrorMessage = (error, fallback) => {
 };
 
 const SWITCH_SKELETON_MIN_MS = 300;
+const CELEBRATION_DELAY_MS = 1600;
 
 const StudentCourseDetailPage = () => {
   const { courseId } = useParams();
@@ -69,6 +73,8 @@ const StudentCourseDetailPage = () => {
   // và khối chuyển bài ở cuối trang chưa xuất hiện.
   const [isVideoVisible, setIsVideoVisible] = useState(true);
   const [isNavVisible, setIsNavVisible] = useState(false);
+
+  useLessonStudyTimer(selectedLesson?.id ?? null);
 
   // ==========================================
   // Get course for learning
@@ -228,8 +234,6 @@ const StudentCourseDetailPage = () => {
   // Completion
   // ==========================================
 
-  const announcedCompletionRef = useRef(new Set());
-
   const applyCompletion = useCallback(
     (lessonId, completion) => {
       if (!lessonId || !completion) return;
@@ -266,18 +270,6 @@ const StudentCourseDetailPage = () => {
     []
   );
 
-  const announceCompletion = useCallback((lessonId) => {
-    if (
-      !lessonId ||
-      announcedCompletionRef.current.has(lessonId)
-    ) {
-      return;
-    }
-
-    announcedCompletionRef.current.add(lessonId);
-    appToast.success("Đã hoàn thành bài học.");
-  }, []);
-
   const handleVideoProgress = async (
     lessonId,
     payload
@@ -296,10 +288,6 @@ const StudentCourseDetailPage = () => {
       if (!completion) return;
 
       applyCompletion(lessonId, completion);
-
-      if (completion.isCompleted) {
-        announceCompletion(lessonId);
-      }
     } catch (progressError) {
       console.error(
         "Update video progress error:",
@@ -341,10 +329,6 @@ const StudentCourseDetailPage = () => {
           if (!completion) return;
 
           applyCompletion(lesson.id, completion);
-
-          if (completion.isCompleted) {
-            announceCompletion(lesson.id);
-          }
         })
         .catch((readingError) => {
           console.error(
@@ -358,7 +342,99 @@ const StudentCourseDetailPage = () => {
       cancelled = true;
       clearInterval(timer);
     };
-  }, [selectedLesson, applyCompletion, announceCompletion]);
+  }, [selectedLesson, applyCompletion]);
+
+  // ==========================================
+  // Chúc mừng hoàn thành khóa học
+  //
+  // Chỉ bật khi khóa vừa chuyển từ chưa xong sang xong trong
+  // phiên này; mở lại khóa đã học xong từ trước thì im lặng.
+  // ==========================================
+
+  const completionSnapshotRef = useRef({
+    initialized: false,
+    completed: false,
+  });
+  const [pendingCelebration, setPendingCelebration] =
+    useState(false);
+  const [celebrationOpen, setCelebrationOpen] =
+    useState(false);
+
+  useEffect(() => {
+    if (!course || lessons.length === 0) return;
+
+    const allCompleted = lessons.every(
+      (lesson) => lesson.isCompleted
+    );
+    const snapshot = completionSnapshotRef.current;
+
+    if (!snapshot.initialized) {
+      completionSnapshotRef.current = {
+        initialized: true,
+        completed: allCompleted,
+      };
+      return;
+    }
+
+    if (!snapshot.completed && allCompleted) {
+      snapshot.completed = true;
+      setPendingCelebration(true);
+      return;
+    }
+
+    snapshot.completed = allCompleted;
+  }, [course, lessons]);
+
+  useEffect(() => {
+    if (!pendingCelebration || celebrationOpen) {
+      return undefined;
+    }
+
+    let cancelled = false;
+    let timer = null;
+
+    const showWhenReady = () => {
+      if (cancelled) return;
+
+      // Đề ôn tập hoặc danh sách bài đang mở: đợi đóng rồi mới hiện.
+      if (quizOpen || drawerOpen) return;
+
+      // Không cắt ngang khi học sinh đang xem video hoặc đang ở tab khác.
+      const video =
+        contentRef.current?.querySelector("video");
+      const isPlaying =
+        video &&
+        !video.paused &&
+        !video.ended &&
+        video.currentTime > 0;
+
+      if (
+        isPlaying ||
+        document.visibilityState !== "visible"
+      ) {
+        timer = setTimeout(showWhenReady, 1200);
+        return;
+      }
+
+      setCelebrationOpen(true);
+      setPendingCelebration(false);
+    };
+
+    timer = setTimeout(
+      showWhenReady,
+      CELEBRATION_DELAY_MS
+    );
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [
+    pendingCelebration,
+    celebrationOpen,
+    quizOpen,
+    drawerOpen,
+  ]);
 
   // ==========================================
   // Download document
@@ -422,10 +498,6 @@ const StudentCourseDetailPage = () => {
         selectedLesson.id,
         result.lessonCompletion
       );
-
-      if (result.lessonCompletion.isCompleted) {
-        announceCompletion(selectedLesson.id);
-      }
     }
   };
 
@@ -528,6 +600,10 @@ const StudentCourseDetailPage = () => {
 
   const isSwitchingLesson = Boolean(switchingLessonId);
 
+  const isCourseCompleted =
+    lessons.length > 0 &&
+    lessons.every((lesson) => lesson.isCompleted);
+
   const videoProgressPercent =
     selectedLesson?.videoDurationSeconds > 0
       ? Math.min(
@@ -571,6 +647,39 @@ const StudentCourseDetailPage = () => {
       />
 
       <div className="mx-auto w-full max-w-7xl px-4 py-4 sm:px-6 sm:py-6 lg:px-8">
+        {isCourseCompleted && (
+          <section className="mb-4 flex flex-col gap-3 rounded-2xl border border-[var(--brand-soft)] bg-[var(--brand-tint)] p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex min-w-0 items-start gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[var(--surface)] text-[var(--brand-solid)]">
+                <Award size={20} strokeWidth={1.8} />
+              </span>
+
+              <div className="min-w-0">
+                <p className="text-[14px] font-semibold leading-5 text-[var(--ink)]">
+                  Bạn đã hoàn thành khóa học
+                </p>
+
+                <p className="mt-0.5 text-[12px] leading-5 text-[var(--muted)]">
+                  Nhận chứng nhận để lưu lại thành quả của mình.
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() =>
+                navigate(
+                  `/student/courses/${courseId}/certificate`
+                )
+              }
+              className="inline-flex h-11 shrink-0 items-center justify-center gap-2 rounded-full bg-[var(--brand-solid)] px-5 text-[13px] font-semibold text-white transition hover:bg-[var(--brand-solid-hover)]"
+            >
+              <Award size={16} />
+              Xem chứng nhận
+            </button>
+          </section>
+        )}
+
         <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-6">
           <div
             ref={contentRef}
@@ -592,18 +701,34 @@ const StudentCourseDetailPage = () => {
                 <p className="mx-auto mt-1.5 max-w-sm text-[13px] leading-6 text-[var(--muted)]">
                   {lessons.length === 0
                     ? "Giáo viên đang chuẩn bị nội dung. Vui lòng quay lại sau."
-                    : "Các bài học của khóa này chỉ mở sau khi bạn đăng ký."}
+                    : "Các bài học của khóa này chỉ mở sau khi bạn đăng ký. Xem chi tiết khóa học để biết cách đăng ký."}
                 </p>
 
-                <button
-                  type="button"
-                  onClick={() =>
-                    navigate("/student/courses")
-                  }
-                  className="mt-5 inline-flex h-11 items-center justify-center rounded-full border border-[var(--line)] px-5 text-[13px] font-medium text-[var(--muted)] transition hover:bg-[var(--surface-3)]"
-                >
-                  Về danh sách khóa học
-                </button>
+                <div className="mt-5 flex flex-col gap-2">
+                  {lessons.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        navigate(
+                          `/student/explore/${courseId}`
+                        )
+                      }
+                      className="inline-flex h-11 items-center justify-center rounded-full bg-[var(--brand-solid)] px-5 text-[13px] font-semibold text-white transition hover:bg-[var(--brand-solid-hover)]"
+                    >
+                      Xem chi tiết khóa học
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      navigate("/student/courses")
+                    }
+                    className="inline-flex h-11 items-center justify-center rounded-full border border-[var(--line)] px-5 text-[13px] font-medium text-[var(--muted)] transition hover:bg-[var(--surface-3)]"
+                  >
+                    Về danh sách khóa học
+                  </button>
+                </div>
               </section>
             ) : isSwitchingLesson ? (
               <LessonSwitchSkeleton />
@@ -626,7 +751,7 @@ const StudentCourseDetailPage = () => {
                 <section className="overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface)] shadow-sm">
                   <div className="p-4 sm:p-5">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="inline-flex h-7 items-center rounded-lg bg-[var(--brand-soft)] px-2.5 text-[12px] font-semibold tabular-nums text-[var(--brand-text)]">
+                      <span className="inline-flex h-7 items-center rounded-lg bg-[var(--brand-soft)] px-2.5 text-[13px] font-semibold tabular-nums text-[var(--brand-text)]">
                         Bài{" "}
                         {String(
                           selectedLesson.order ?? 0
@@ -634,7 +759,7 @@ const StudentCourseDetailPage = () => {
                       </span>
 
                       {selectedLesson.duration != null && (
-                        <span className="inline-flex h-7 items-center gap-1 rounded-full bg-[var(--surface-2)] px-2.5 text-[12px] font-medium text-[var(--muted)]">
+                        <span className="inline-flex h-7 items-center gap-1 rounded-full bg-[var(--surface-2)] px-2.5 text-[13px] font-medium text-[var(--muted)]">
                           <Clock3 size={13} />
 
                           {formatDuration(
@@ -644,12 +769,12 @@ const StudentCourseDetailPage = () => {
                       )}
 
                       {selectedLesson.isCompleted ? (
-                        <span className="inline-flex h-7 items-center gap-1 rounded-full bg-[var(--success-soft)] px-2.5 text-[12px] font-semibold text-[var(--success)]">
+                        <span className="inline-flex h-7 items-center gap-1 rounded-full bg-[var(--success-soft)] px-2.5 text-[13px] font-semibold text-[var(--success)]">
                           <CheckCircle2 size={13} />
                           Đã hoàn thành
                         </span>
                       ) : (
-                        <span className="inline-flex h-7 items-center rounded-full bg-[var(--brand-tint)] px-2.5 text-[12px] font-medium text-[var(--brand-text)]">
+                        <span className="inline-flex h-7 items-center rounded-full bg-[var(--brand-tint)] px-2.5 text-[13px] font-medium text-[var(--brand-text)]">
                           Đang học
                         </span>
                       )}
@@ -852,6 +977,22 @@ const StudentCourseDetailPage = () => {
         onClose={() => setQuizOpen(false)}
         onFinished={handleQuizFinished}
         onSelectNextLesson={handleSelectLesson}
+      />
+
+      <CourseCompletionCelebration
+        open={celebrationOpen}
+        courseTitle={course?.title ?? ""}
+        onClose={() => setCelebrationOpen(false)}
+        onViewCourses={() => {
+          setCelebrationOpen(false);
+          navigate("/student/courses");
+        }}
+        onViewCertificate={() => {
+          setCelebrationOpen(false);
+          navigate(
+            `/student/courses/${courseId}/certificate`
+          );
+        }}
       />
     </div>
   );

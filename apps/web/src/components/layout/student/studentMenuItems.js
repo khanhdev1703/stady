@@ -1,4 +1,5 @@
 import {
+    Bell,
     BookOpen,
     Compass,
     UserRound,
@@ -16,6 +17,13 @@ const studentMenuItems = [
         path: "/student/explore",
         icon: Compass,
         end: false,
+    },
+    {
+        label: "Thông báo",
+        path: "/student/notifications",
+        icon: Bell,
+        end: true,
+        showBadge: true,
     },
     {
         label: "Hồ sơ",

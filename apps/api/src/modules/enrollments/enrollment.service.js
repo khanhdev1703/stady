@@ -3,6 +3,7 @@
 import enrollmentRepository from "./enrollment.repository.js";
 import courseRepository from "../courses/course.repository.js";
 import userRepository from "../users/user.repository.js";
+import notificationService from "../notifications/notification.service.js";
 
 const enrollmentService = {
 
@@ -213,6 +214,12 @@ const enrollmentService = {
                 expiresAt: finalExpiresAt,
             });
 
+        await notificationService.notifyEnrollmentCreated({
+            studentId: student.id,
+            course,
+            enrollment,
+        });
+
         // ------------------------------------------
         // Return formatted data
         // ------------------------------------------
@@ -365,6 +372,12 @@ const enrollmentService = {
                 }
             );
 
+        await notificationService.notifyEnrollmentRenewed({
+            studentId: enrollment.studentId,
+            course,
+            enrollment: updatedEnrollment,
+        });
+
         return updatedEnrollment;
     },
 
@@ -422,6 +435,12 @@ const enrollmentService = {
             await enrollmentRepository.deleteById(
                 enrollmentId
             );
+
+        await notificationService.notifyEnrollmentRemoved({
+            studentId: enrollment.studentId,
+            course,
+            enrollmentId,
+        });
 
         return deletedEnrollment;
     },

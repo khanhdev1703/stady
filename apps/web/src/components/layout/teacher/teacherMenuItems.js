@@ -1,6 +1,5 @@
 import {
     BookOpen,
-    Bell,
     UserRound,
 } from "lucide-react";
 
@@ -13,13 +12,6 @@ const teacherMenuItems = [
                 path: "/teacher/courses",
                 icon: BookOpen,
                 end: false,
-                isShowMenu: true,
-            },
-            {
-                label: "Thông báo",
-                path: "/teacher/notifications",
-                icon: Bell,
-                end: true,
                 isShowMenu: true,
             },
         ],

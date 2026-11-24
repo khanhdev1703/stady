@@ -110,7 +110,7 @@ const LessonList = ({
                                 {lesson.title}
                             </span>
 
-                            <span className="mt-0.5 flex items-center gap-2 text-[12px]">
+                            <span className="mt-0.5 flex items-center gap-2 text-[13px]">
                                 {lesson.duration != null && (
                                     <span className="text-[var(--faint)]">
                                         {formatDuration(

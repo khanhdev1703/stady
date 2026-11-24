@@ -171,7 +171,7 @@ const ChangePasswordPage = () => {
                                 onChange={handleChange}
                                 placeholder="Nhập mật khẩu hiện tại"
                                 disabled={loading}
-                                className="h-10 w-full rounded-full border border-[var(--line)] bg-[var(--surface)] px-3 pr-12 text-[12px] text-[var(--ink)] outline-none transition placeholder:text-[var(--faint)] focus:border-[var(--brand-soft)] focus:ring-2 focus:ring-[var(--brand-soft)] disabled:bg-[var(--surface-2)]"
+                                className="h-11 w-full rounded-full border border-[var(--line)] bg-[var(--surface)] px-3 pr-12 text-[12px] text-[var(--ink)] outline-none transition placeholder:text-[var(--faint)] focus:border-[var(--brand-soft)] focus:ring-2 focus:ring-[var(--brand-soft)] disabled:bg-[var(--surface-2)]"
                             />
 
                             <button
@@ -220,7 +220,7 @@ const ChangePasswordPage = () => {
                                 onChange={handleChange}
                                 placeholder="Nhập mật khẩu mới"
                                 disabled={loading}
-                                className="h-10 w-full rounded-full border border-[var(--line)] bg-[var(--surface)] px-3 pr-12 text-[12px] text-[var(--ink)] outline-none transition placeholder:text-[var(--faint)] focus:border-[var(--brand-soft)] focus:ring-2 focus:ring-[var(--brand-soft)] disabled:bg-[var(--surface-2)]"
+                                className="h-11 w-full rounded-full border border-[var(--line)] bg-[var(--surface)] px-3 pr-12 text-[12px] text-[var(--ink)] outline-none transition placeholder:text-[var(--faint)] focus:border-[var(--brand-soft)] focus:ring-2 focus:ring-[var(--brand-soft)] disabled:bg-[var(--surface-2)]"
                             />
 
                             <button
@@ -273,7 +273,7 @@ const ChangePasswordPage = () => {
                                 onChange={handleChange}
                                 placeholder="Nhập lại mật khẩu mới"
                                 disabled={loading}
-                                className="h-10 w-full rounded-full border border-[var(--line)] bg-[var(--surface)] px-3 pr-12 text-[12px] text-[var(--ink)] outline-none transition placeholder:text-[var(--faint)] focus:border-[var(--brand-soft)] focus:ring-2 focus:ring-[var(--brand-soft)] disabled:bg-[var(--surface-2)]"
+                                className="h-11 w-full rounded-full border border-[var(--line)] bg-[var(--surface)] px-3 pr-12 text-[12px] text-[var(--ink)] outline-none transition placeholder:text-[var(--faint)] focus:border-[var(--brand-soft)] focus:ring-2 focus:ring-[var(--brand-soft)] disabled:bg-[var(--surface-2)]"
                             />
 
                             <button

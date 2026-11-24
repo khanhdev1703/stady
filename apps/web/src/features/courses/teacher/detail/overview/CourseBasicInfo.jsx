@@ -164,7 +164,7 @@ const CourseBasicInfo = ({
                                         event.target.value
                                     )
                                 }
-                                placeholder="Ví dụ: Lập trình ReactJS từ cơ bản đến nâng cao"
+                                placeholder="Ví dụ: Luyện nghe tiếng Lào trình độ A2"
                                 disabled={saving}
                                 className={inputClass}
                             />

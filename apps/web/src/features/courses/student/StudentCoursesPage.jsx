@@ -12,10 +12,12 @@ import appToast from "@/lib/toast.js";
 import learningApi from "@/features/learning/api.js";
 
 import StudentCourseCard from "@/features/courses/components/StudentCourseCard.jsx";
+import StudentProgressSummary from "@/features/learning/components/StudentProgressSummary.jsx";
 
 const StudentCoursesPage = () => {
   const [enrollments, setEnrollments] = useState([]);
-  const [expiredCount, setExpiredCount] = useState(0);
+  const [expiredCourses, setExpiredCourses] = useState([]);
+  const [progress, setProgress] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
@@ -26,10 +28,26 @@ const StudentCoursesPage = () => {
       setLoading(true);
       setError(false);
 
-      const response = await learningApi.getMyCourses();
+      const [coursesResponse, progressResponse] =
+        await Promise.all([
+          learningApi.getMyCourses(),
+          learningApi
+            .getMyProgress()
+            .catch((progressError) => {
+              console.error(
+                "Get student progress error:",
+                progressError
+              );
 
-      setEnrollments(response?.data || []);
-      setExpiredCount(response?.meta?.expiredCount ?? 0);
+              return null;
+            }),
+        ]);
+
+      setEnrollments(coursesResponse?.data || []);
+      setExpiredCourses(
+        coursesResponse?.meta?.expiredCourses || []
+      );
+      setProgress(progressResponse?.data ?? null);
     } catch (error) {
       console.error("Get student courses error:", error);
 
@@ -64,7 +82,7 @@ const StudentCoursesPage = () => {
           </span>
 
           <h1 className="text-lg font-semibold tracking-tight text-[var(--ink)] sm:text-xl">
-            Khóa học của tôi
+            Học tập
           </h1>
         </div>
       </header>
@@ -76,37 +94,41 @@ const StudentCoursesPage = () => {
         {error && <ErrorState onRetry={fetchCourses} />}
 
         {/* =====================================================
-                    EMPTY STATE
+                    PROGRESS SUMMARY
                 ====================================================== */}
-        {!error && enrollments.length === 0 && (
-          <EmptyState
-            expiredCount={expiredCount}
-            onExplore={() => navigate("/student/explore")}
-          />
+        {!error && progress && (
+          <StudentProgressSummary progress={progress} />
         )}
 
         {/* =====================================================
-                    EXPIRED NOTICE
+                    EMPTY STATE
                 ====================================================== */}
-        {!error && enrollments.length > 0 && expiredCount > 0 && (
-          <div className="mb-4 rounded-lg border border-[var(--accent-soft)] bg-[var(--accent-soft)] px-4 py-3">
-            <p className="text-sm font-medium text-[var(--accent)]">
-              {expiredCount} khóa học đã hết hạn truy cập
-            </p>
-
-            <p className="mt-1 text-sm text-[var(--accent)]">
-              Liên hệ giáo viên phụ trách để gia hạn thêm thời gian
-              học.
-            </p>
-          </div>
-        )}
+        {!error &&
+          enrollments.length === 0 &&
+          expiredCourses.length === 0 && (
+            <div className={progress ? "mt-5" : ""}>
+              <EmptyState
+                onExplore={() => navigate("/student/explore")}
+              />
+            </div>
+          )}
 
         {/* =====================================================
                     COURSE LIST
                 ====================================================== */}
         {!error && enrollments.length > 0 && (
-          <section>
-            <div className="grid gap-4 lg:grid-cols-2">
+          <section className={progress ? "mt-5" : ""}>
+            <div className="mb-3 flex items-baseline justify-between gap-3">
+              <h2 className="text-[15px] font-semibold text-[var(--ink)]">
+                Khóa học của tôi
+              </h2>
+
+              <span className="text-[12px] font-medium text-[var(--muted)]">
+                {enrollments.length} khóa
+              </span>
+            </div>
+
+            <div className="grid gap-3 lg:grid-cols-2">
               {enrollments.map((enrollment) => (
                 <StudentCourseCard
                   key={enrollment.id}
@@ -114,6 +136,55 @@ const StudentCoursesPage = () => {
                 />
               ))}
             </div>
+          </section>
+        )}
+
+        {/* =====================================================
+                    EXPIRED COURSES
+                ====================================================== */}
+        {!error && expiredCourses.length > 0 && (
+          <section
+            className={
+              enrollments.length > 0
+                ? "mt-8"
+                : progress
+                  ? "mt-5"
+                  : ""
+            }
+          >
+            <div className="mb-1 flex items-center gap-2">
+              <h2 className="text-[15px] font-semibold text-[var(--ink)]">
+                Đã hết hạn
+              </h2>
+
+              <span className="rounded-md bg-[var(--accent-soft)] px-1.5 py-0.5 text-[12px] font-semibold tabular-nums text-[var(--accent)]">
+                {expiredCourses.length}
+              </span>
+            </div>
+
+            <p className="mb-4 text-[13px] leading-6 text-[var(--muted)]">
+              Liên hệ giáo viên phụ trách để gia hạn thêm thời
+              gian học.
+            </p>
+
+            <div className="grid gap-3 lg:grid-cols-2">
+              {expiredCourses.map((enrollment) => (
+                <StudentCourseCard
+                  key={enrollment.id}
+                  enrollment={enrollment}
+                />
+              ))}
+            </div>
+
+            {enrollments.length === 0 && (
+              <button
+                type="button"
+                onClick={() => navigate("/student/explore")}
+                className="mt-4 inline-flex h-11 items-center justify-center gap-2 rounded-full bg-[var(--brand-solid)] px-5 text-[13px] font-semibold text-white transition hover:bg-[var(--brand-solid-hover)]"
+              >
+                Khám phá khóa học mới
+              </button>
+            )}
           </section>
         )}
       </div>
@@ -138,29 +209,35 @@ const LoadingState = () => {
       </header>
 
       <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-8">
-        {/* Summary skeleton */}
-        <div className="mb-6 space-y-3">
-          <div className="h-8 w-40 animate-pulse rounded-md bg-[var(--line)]" />
-          <div className="h-4 w-64 animate-pulse rounded bg-[var(--surface-2)]" />
+        {/* Progress skeleton */}
+        <div className="mb-5 rounded-2xl border border-[var(--line)] bg-[var(--surface)] px-4 py-4">
+          <div className="h-3.5 w-32 animate-pulse rounded bg-[var(--line)]" />
+
+          <div className="mt-3 flex gap-3">
+            <div className="h-9 flex-1 animate-pulse rounded-xl bg-[var(--surface-2)]" />
+            <div className="h-9 flex-1 animate-pulse rounded-xl bg-[var(--surface-2)]" />
+          </div>
+
+          <div className="mt-4 h-7 animate-pulse rounded-full bg-[var(--surface-2)]" />
         </div>
 
+        <div className="mb-3 h-4 w-28 animate-pulse rounded bg-[var(--line)]" />
+
         {/* Course skeletons */}
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid gap-3 lg:grid-cols-2">
           {[1, 2, 3, 4].map((item) => (
             <div
               key={item}
-              className="overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface)]"
+              className="flex gap-3 rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-3"
             >
-              <div className="flex">
-                <div className="h-28 w-28 shrink-0 animate-pulse bg-[var(--line)] sm:h-32 sm:w-36" />
+              <div className="h-[88px] w-[108px] shrink-0 animate-pulse rounded-xl bg-[var(--line)]" />
 
-                <div className="min-w-0 flex-1 space-y-3 p-4">
-                  <div className="h-4 w-4/5 animate-pulse rounded bg-[var(--line)]" />
-
-                  <div className="h-3 w-2/5 animate-pulse rounded bg-[var(--surface-2)]" />
-
-                  <div className="h-2 w-full animate-pulse rounded-full bg-[var(--surface-2)]" />
-                </div>
+              <div className="min-w-0 flex-1 space-y-2 py-0.5">
+                <div className="h-3.5 w-4/5 animate-pulse rounded bg-[var(--line)]" />
+                <div className="h-3 w-1/3 animate-pulse rounded bg-[var(--surface-2)]" />
+                <div className="h-1.5 w-full animate-pulse rounded-full bg-[var(--surface-2)]" />
+                <div className="h-3 w-2/5 animate-pulse rounded bg-[var(--surface-2)]" />
+                <div className="h-10 w-full animate-pulse rounded-full bg-[var(--surface-2)]" />
               </div>
             </div>
           ))}
@@ -174,9 +251,7 @@ const LoadingState = () => {
    EMPTY STATE
 ========================================================= */
 
-const EmptyState = ({ expiredCount = 0, onExplore }) => {
-  const hasExpired = expiredCount > 0;
-
+const EmptyState = ({ onExplore }) => {
   return (
     <section className="relative flex min-h-[55vh] items-center justify-center overflow-hidden rounded-2xl border border-[var(--line)] bg-[var(--surface)] px-4 py-6 shadow-sm sm:px-6 sm:py-8 lg:px-8 lg:py-12">
       <div
@@ -191,15 +266,12 @@ const EmptyState = ({ expiredCount = 0, onExplore }) => {
 
         <div className="mt-5">
           <h2 className="text-base font-semibold text-[var(--ink)]">
-            {hasExpired
-              ? "Khóa học đã hết hạn truy cập"
-              : "Chưa có khóa học nào"}
+            Chưa có khóa học nào
           </h2>
 
           <p className="mx-auto mt-2 max-w-sm text-sm leading-6 text-[var(--muted)]">
-            {hasExpired
-              ? `Bạn có ${expiredCount} khóa học đã hết hạn. Liên hệ giáo viên phụ trách để gia hạn, hoặc khám phá khóa học mới.`
-              : "Khám phá các khóa học phù hợp với bạn và bắt đầu xây dựng kỹ năng mới."}
+            Khám phá các khóa học phù hợp với bạn và bắt đầu
+            xây dựng kỹ năng mới.
           </p>
         </div>
 

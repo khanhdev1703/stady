@@ -5,9 +5,14 @@ import ScrollToTop from "@/components/ui/ScrollToTop.jsx";
 
 import StudentSidebar from "@/components/layout/student/StudentSidebar.jsx";
 import StudentBottomNav from "@/components/layout/student/StudentBottomNav.jsx";
+import useNotificationPolling from "@/features/notifications/hooks/useNotificationPolling.js";
+import useNotificationStream from "@/features/notifications/hooks/useNotificationStream.js";
 
 const StudentLayout = () => {
     const mainRef = useRef(null);
+
+    useNotificationPolling();
+    useNotificationStream();
 
     return (
         <div className="app-canvas min-h-dvh">

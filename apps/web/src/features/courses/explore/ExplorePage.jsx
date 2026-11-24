@@ -1,11 +1,13 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
+    ArrowRight,
     AlertCircle,
     BookOpen,
     CalendarDays,
     Clock3,
     Compass,
+    PlayCircle,
     Search,
     X,
 } from "lucide-react";
@@ -15,15 +17,11 @@ import { Link } from "react-router-dom";
 import Loading from "@/components/ui/Loading.jsx";
 
 import courseApi from "@/features/courses/api.js";
+import learningApi from "@/features/learning/api.js";
 
 import formatDuration from "@/lib/format/formatDuration.js";
 import formatPrice from "@/lib/format/formatPrice.js";
 import getUrl from "@/lib/getUrl.js";
-
-const FILTERS = [
-    { id: "ALL", label: "Tất cả" },
-    { id: "FREE", label: "Miễn phí" },
-];
 
 const ExplorePage = () => {
     const [courses, setCourses] = useState([]);
@@ -32,7 +30,10 @@ const ExplorePage = () => {
 
     const [query, setQuery] = useState("");
     const [debouncedQuery, setDebouncedQuery] = useState("");
-    const [filter, setFilter] = useState("ALL");
+
+    const [enrolledCourseIds, setEnrolledCourseIds] = useState(
+        () => new Set()
+    );
 
     const [reloadKey, setReloadKey] = useState(0);
 
@@ -84,23 +85,35 @@ const ExplorePage = () => {
         };
     }, [debouncedQuery, reloadKey]);
 
-    const filteredCourses = useMemo(() => {
-        if (filter === "FREE") {
-            return courses.filter(
-                (course) => Number(course.price || 0) <= 0
-            );
-        }
+    useEffect(() => {
+        let active = true;
 
-        return courses;
-    }, [courses, filter]);
+        learningApi
+            .getMyCourses()
+            .then((response) => {
+                if (!active) return;
 
-    const hasFilter =
-        Boolean(debouncedQuery) || filter !== "ALL";
+                setEnrolledCourseIds(
+                    new Set(
+                        (response?.data || []).map(
+                            (enrollment) => enrollment.courseId
+                        )
+                    )
+                );
+            })
+            .catch((coursesError) => {
+                console.error(
+                    "Get my courses error:",
+                    coursesError
+                );
+            });
 
-    const clearFilters = () => {
-        setQuery("");
-        setFilter("ALL");
-    };
+        return () => {
+            active = false;
+        };
+    }, []);
+
+    const hasSearch = Boolean(debouncedQuery);
 
     return (
         <div className="min-h-full bg-[var(--bg)]">
@@ -126,7 +139,7 @@ const ExplorePage = () => {
                                 "shadow-sm",
                             ].join(" ")}
                         >
-                            {filteredCourses.length}
+                            {courses.length}
                         </span>
                     )}
                 </div>
@@ -134,9 +147,9 @@ const ExplorePage = () => {
 
             {/* BODY */}
             <div className="mx-auto w-full max-w-7xl px-4 py-3 sm:px-6 sm:py-6 lg:px-8">
-                {/* SEARCH + FILTER */}
-                <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
-                    <div className="relative flex-1">
+                {/* SEARCH */}
+                <div className="mb-4">
+                    <div className="relative">
                         <Search
                             size={17}
                             strokeWidth={1.9}
@@ -174,36 +187,6 @@ const ExplorePage = () => {
                                 <X size={16} />
                             </button>
                         )}
-                    </div>
-
-                    <div
-                        role="group"
-                        aria-label="Lọc khóa học"
-                        className="flex gap-2"
-                    >
-                        {FILTERS.map((item) => {
-                            const isActive = filter === item.id;
-
-                            return (
-                                <button
-                                    key={item.id}
-                                    type="button"
-                                    onClick={() => setFilter(item.id)}
-                                    aria-pressed={isActive}
-                                    className={[
-                                        "h-11 flex-1 rounded-full border px-4",
-                                        "text-[13px] font-medium",
-                                        "transition-colors duration-150",
-                                        "sm:flex-none",
-                                        isActive
-                                            ? "border-[var(--brand)] bg-[var(--brand-soft)] text-[var(--brand-text)]"
-                                            : "border-[var(--line)] bg-[var(--surface)] text-[var(--muted)] hover:bg-[var(--surface-3)]",
-                                    ].join(" ")}
-                                >
-                                    {item.label}
-                                </button>
-                            );
-                        })}
                     </div>
                 </div>
 
@@ -272,26 +255,31 @@ const ExplorePage = () => {
                 )}
 
                 {/* COURSES */}
-                {!error && filteredCourses.length > 0 && (
+                {!error && courses.length > 0 && (
                     <div
                         className={[
-                            "grid grid-cols-1 gap-5",
-                            "sm:grid-cols-2",
-                            "lg:grid-cols-3",
-                            "xl:grid-cols-4",
+                            "grid gap-5",
+                            "[grid-template-columns:repeat(auto-fill,minmax(17.5rem,1fr))]",
                         ].join(" ")}
                     >
-                        {filteredCourses.map((course) => {
+                        {courses.map((course) => {
                             const isFree =
                                 Number(course.price || 0) <= 0;
 
                             const durationMonths =
                                 Number(course.durationMonths || 0);
 
+                            const enrolled =
+                                enrolledCourseIds.has(course.id);
+
                             return (
                                 <Link
                                     key={course.id}
-                                    to={`/student/explore/${course.id}`}
+                                    to={
+                                        enrolled
+                                            ? `/student/courses/${course.id}`
+                                            : `/student/explore/${course.id}`
+                                    }
                                     className={[
                                         "group flex h-full flex-col",
                                         "overflow-hidden rounded-2xl",
@@ -431,28 +419,49 @@ const ExplorePage = () => {
                                             </div>
                                         </div>
 
-                                        {/* VIEW BUTTON */}
-                                        <div className="mt-4 flex items-center justify-between">
-                                            <span className="text-[12px] text-[var(--faint)]">
-                                                Xem chi tiết
-                                            </span>
-
-                                            <span
-                                                className={[
-                                                    "inline-flex items-center",
-                                                    "rounded-full",
-                                                    "bg-[var(--brand-solid)]",
-                                                    "px-3.5 py-1.5",
-                                                    "text-[12px] font-semibold",
-                                                    "text-white",
-                                                    "shadow-sm",
-                                                    "transition-all duration-200",
-                                                    "group-hover:bg-[var(--brand-solid-hover)]",
-                                                    "group-hover:shadow-md",
-                                                ].join(" ")}
-                                            >
-                                                Xem
-                                            </span>
+                                        {/* CTA */}
+                                        <div className="mt-auto pt-4">
+                                            {enrolled ? (
+                                                <span
+                                                    className={[
+                                                        "inline-flex h-11 w-full items-center justify-center gap-2",
+                                                        "rounded-full",
+                                                        "bg-[var(--brand-solid)]",
+                                                        "px-4",
+                                                        "text-[13px] font-semibold text-white",
+                                                        "shadow-sm",
+                                                        "transition-all duration-200",
+                                                        "group-hover:bg-[var(--brand-solid-hover)]",
+                                                        "group-hover:shadow-md",
+                                                    ].join(" ")}
+                                                >
+                                                    <PlayCircle
+                                                        size={16}
+                                                        strokeWidth={2}
+                                                    />
+                                                    Vào học
+                                                </span>
+                                            ) : (
+                                                <span
+                                                    className={[
+                                                        "inline-flex h-11 w-full items-center justify-center gap-2",
+                                                        "rounded-full",
+                                                        "border border-[var(--line)]",
+                                                        "bg-transparent px-4",
+                                                        "text-[13px] font-medium text-[var(--ink-2)]",
+                                                        "transition-all duration-200",
+                                                        "group-hover:border-[var(--line-strong)]",
+                                                        "group-hover:bg-[var(--surface-2)]",
+                                                    ].join(" ")}
+                                                >
+                                                    Xem chi tiết
+                                                    <ArrowRight
+                                                        size={15}
+                                                        strokeWidth={2}
+                                                        className="transition-transform duration-200 group-hover:translate-x-0.5"
+                                                    />
+                                                </span>
+                                            )}
                                         </div>
                                     </div>
                                 </Link>
@@ -462,7 +471,7 @@ const ExplorePage = () => {
                 )}
 
                 {/* EMPTY */}
-                {!loading && !error && filteredCourses.length === 0 && (
+                {!loading && !error && courses.length === 0 && (
                     <div
                         className={[
                             "mx-auto flex min-h-[280px] max-w-xl",
@@ -483,24 +492,24 @@ const ExplorePage = () => {
                         </div>
 
                         <h2 className="mt-4 text-sm font-semibold text-[var(--ink)]">
-                            {hasFilter
+                            {hasSearch
                                 ? "Không tìm thấy khóa học phù hợp"
                                 : "Chưa có khóa học"}
                         </h2>
 
                         <p className="mt-1 text-[13px] leading-5 text-[var(--muted)]">
-                            {hasFilter
-                                ? "Thử từ khóa khác hoặc bỏ bộ lọc để xem tất cả khóa học."
+                            {hasSearch
+                                ? "Thử từ khóa khác để xem tất cả khóa học."
                                 : "Hiện tại chưa có khóa học nào để hiển thị."}
                         </p>
 
-                        {hasFilter && (
+                        {hasSearch && (
                             <button
                                 type="button"
-                                onClick={clearFilters}
+                                onClick={() => setQuery("")}
                                 className="mt-4 inline-flex h-11 items-center justify-center rounded-full border border-[var(--line)] px-5 text-sm font-medium text-[var(--muted)] transition hover:bg-[var(--surface-3)]"
                             >
-                                Xóa bộ lọc
+                                Xóa từ khóa
                             </button>
                         )}
                     </div>

@@ -213,7 +213,7 @@ const AddStudentModal = ({
                 onMouseDown={(e) => e.stopPropagation()}
             >
                 {/* Header */}
-                <div className="flex items-center justify-between border-b border-[var(--line)] px-4 py-3">
+                <div className="flex items-center justify-between border-b border-[var(--line)] px-4 py-2">
                     <h2 className="text-sm font-semibold text-[var(--ink)]">
                         Thêm học sinh
                     </h2>
@@ -222,9 +222,10 @@ const AddStudentModal = ({
                         type="button"
                         onClick={handleClose}
                         disabled={isProcessing}
-                        className="flex h-7 w-7 items-center justify-center rounded-full text-[var(--faint)] transition hover:bg-[var(--surface-2)] hover:text-[var(--ink-2)] disabled:cursor-not-allowed disabled:opacity-50"
+                        aria-label="Đóng"
+                        className="flex h-11 w-11 items-center justify-center rounded-full text-[var(--faint)] transition hover:bg-[var(--surface-2)] hover:text-[var(--ink-2)] disabled:cursor-not-allowed disabled:opacity-50"
                     >
-                        <X size={16} />
+                        <X size={18} />
                     </button>
                 </div>
 
@@ -263,7 +264,7 @@ const AddStudentModal = ({
                                         placeholder="Nhập mã học sinh"
                                         autoFocus
                                         disabled={isProcessing}
-                                        className="h-9 w-full rounded-full border border-[var(--line)] bg-[var(--surface)] pl-9 pr-3 text-xs text-[var(--ink)] outline-none transition placeholder:text-[var(--faint)] focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 disabled:bg-[var(--surface-3)]"
+                                        className="h-11 w-full rounded-full border border-[var(--line)] bg-[var(--surface)] pl-9 pr-3 text-sm text-[var(--ink)] outline-none transition placeholder:text-[var(--faint)] focus:border-blue-500 focus:ring-2 focus:ring-blue-500/10 disabled:bg-[var(--surface-3)]"
                                     />
                                 </div>
 
@@ -273,7 +274,7 @@ const AddStudentModal = ({
                                         isProcessing ||
                                         !studentCode.trim()
                                     }
-                                    className="flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-[var(--brand-solid)] px-3 text-xs font-medium text-white transition hover:bg-[var(--brand-solid-hover)] disabled:cursor-not-allowed disabled:opacity-50"
+                                    className="flex h-11 shrink-0 items-center gap-1.5 rounded-full bg-[var(--brand-solid)] px-4 text-sm font-medium text-white transition hover:bg-[var(--brand-solid-hover)] disabled:cursor-not-allowed disabled:opacity-50"
                                 >
                                     <Search size={14} />
 
@@ -283,6 +284,13 @@ const AddStudentModal = ({
                                 </button>
                             </div>
                         </div>
+
+                        {!checkResult && (
+                            <p className="mt-3 text-[12px] text-[var(--faint)]">
+                                Nhập mã học sinh để kiểm tra, ví dụ
+                                HS0001.
+                            </p>
+                        )}
 
                         {/* Result */}
                         {checkResult && (
@@ -436,7 +444,7 @@ const AddStudentModal = ({
                             type="button"
                             onClick={handleClose}
                             disabled={isProcessing}
-                            className="h-8 rounded-full border border-[var(--line)] bg-[var(--surface)] px-3 text-[12px] font-medium text-[var(--muted)] transition hover:bg-[var(--surface-3)] disabled:cursor-not-allowed disabled:opacity-50"
+                            className="h-10 rounded-full border border-[var(--line)] bg-[var(--surface)] px-4 text-[13px] font-medium text-[var(--muted)] transition hover:bg-[var(--surface-3)] disabled:cursor-not-allowed disabled:opacity-50"
                         >
                             Hủy
                         </button>
@@ -448,7 +456,7 @@ const AddStudentModal = ({
                                 disabled={
                                     isProcessing || !expiresAt
                                 }
-                                className="h-8 rounded-full bg-[var(--brand-solid)] px-3 text-[12px] font-medium text-white transition hover:bg-[var(--brand-solid-hover)] disabled:cursor-not-allowed disabled:opacity-50"
+                                className="h-10 rounded-full bg-[var(--brand-solid)] px-4 text-[13px] font-medium text-white transition hover:bg-[var(--brand-solid-hover)] disabled:cursor-not-allowed disabled:opacity-50"
                             >
                                 {adding
                                     ? "Đang thêm..."

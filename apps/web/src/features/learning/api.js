@@ -9,6 +9,14 @@ const learningApi = {
         return response.data;
     },
 
+    async getMyProgress() {
+        const response = await apiClient.get(
+            "/learning/my-progress"
+        );
+
+        return response.data;
+    },
+
     async getCourseForLearning(courseId) {
         const response = await apiClient.get(
             `/learning/courses/${courseId}`
@@ -20,6 +28,31 @@ const learningApi = {
     async accessLesson(lessonId) {
         const response = await apiClient.post(
             `/learning/lessons/${lessonId}/access`
+        );
+
+        return response.data;
+    },
+
+    async addLessonTime(lessonId, seconds) {
+        const response = await apiClient.post(
+            `/learning/lessons/${lessonId}/time`,
+            { seconds }
+        );
+
+        return response.data;
+    },
+
+    async enrollFreeCourse(courseId) {
+        const response = await apiClient.post(
+            `/learning/courses/${courseId}/enroll`
+        );
+
+        return response.data;
+    },
+
+    async issueCertificate(courseId) {
+        const response = await apiClient.post(
+            `/learning/courses/${courseId}/certificate`
         );
 
         return response.data;
